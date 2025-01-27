@@ -2,91 +2,23 @@ version: '3.8'
 
 services:
   app:
-    build: .
-    ports:
-      - "3002:3000"
+    build: 
+      context: .
+      dockerfile: Dockerfile
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/pulse-flow
-      - KAFKA_BROKERS=kafka:9092
-    depends_on:
-      mongodb:
-        condition: service_healthy  # Add health check
-      kafka:
-        condition: service_started
-      prometheus:
-        condition: service_started
-    volumes:
-      - ./src:/usr/src/app/src
-      - ./package.json:/usr/src/app/package.json
-    networks:
-      - app-network
+      - NODE_ENV=production
+      - PORT=${PORT}
+      - MONGODB_URI=${MONGODB_URI}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+    ports:
+      - "${PORT}:3000"
+
   mongodb:
     image: mongo:latest
-    ports:
-      - "27017:27017"
     volumes:
       - mongodb_data:/data/db
     environment:
-      - MONGO_INITDB_DATABASE=pulse-flow
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping').ok", "--quiet"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-    networks:
-      - app-network
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    networks:
-      - app-network
-  kafka:
-    image: confluentinc/cp-kafka:latest
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    ports:
-      - "29092:29092"
-    networks:
-      - app-network
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - type: bind
-        source: ./docker/prometheus
-        target: /etc/prometheus
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    networks:
-      - app-network
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning
-      - grafana_data:/var/lib/grafana
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
 
 volumes:
   mongodb_data:
-  prometheus_data:
-  grafana_data:
