@@ -1,25 +1,45 @@
-import client, { Counter } from 'prom-client';
+import client, { Counter, Registry } from 'prom-client';
 import { Express } from 'express';
+import { grafanaConfig } from '../config/grafana.config';
 
-const register = new client.Registry();
-client.collectDefaultMetrics({ register });
+// Setup Grafana metrics
+const metrics = new Registry();
+metrics.setDefaultLabels(grafanaConfig.metrics.defaultLabels);
 
-const collectDefaultMetrics = client.collectDefaultMetrics;
-collectDefaultMetrics();
-
-export const orderCounter = new client.Counter({
-  name: 'orders_processed_total',
-  help: 'Total number of processed orders'
+// Initialize default metrics
+client.collectDefaultMetrics({ 
+  register: metrics,
+  prefix: grafanaConfig.metrics.prefix,
+  gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5]
 });
 
+export const orderCounter = new Counter({
+  name: `${grafanaConfig.metrics.prefix}orders_processed_total`,
+  help: 'Total number of processed orders',
+  labelNames: ['status'],
+  registers: [metrics]
+});
+
+export const errorCounter = new Counter({
+  name: `${grafanaConfig.metrics.prefix}errors_total`,
+  help: 'Total number of errors',
+  labelNames: ['type'],
+  registers: [metrics]
+});
+
+// Request timeout and error handling
 export const setupMetrics = (app: Express) => {
-  app.get('/metrics', async (req, res) => {
-    res.set('Content-Type', client.register.contentType);
-    res.send(await client.register.metrics());
+  app.get(grafanaConfig.metrics.path, async (req, res) => {
+    try {
+      res.set('Content-Type', metrics.contentType);
+      const metricsData = await metrics.metrics();
+      res.send(metricsData);
+    } catch (error) {
+      errorCounter.inc({ type: 'metrics_collection' });
+      res.status(500).send('Error collecting metrics');
+    }
   });
 };
 
-export const errorCounter = new Counter({
-  name: 'error_counter',
-  help: 'Total number of errors'
-});
+
+export { metrics };
