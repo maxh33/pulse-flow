@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: pulse-flow
+    env: docker
+    buildCommand: docker build -t pulse-flow .
+    startCommand: npm start
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production

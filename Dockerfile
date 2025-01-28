@@ -6,6 +6,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+RUN npm run build
 
 # Install MongoDB Shell
 RUN curl -fsSL https://www.mongodb.org/static/pgp/server-6.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg \
@@ -13,7 +14,6 @@ RUN curl -fsSL https://www.mongodb.org/static/pgp/server-6.0.asc | gpg --dearmor
     && apt-get update \
     && apt-get install -y mongodb-mongosh
 
-COPY wait-for-it.sh /wait-for-it.sh
-RUN chmod +x /wait-for-it.sh
+EXPOSE 3000
 
-CMD ["/wait-for-it.sh", "npm", "start"]
+CMD ["npm", "start"]
