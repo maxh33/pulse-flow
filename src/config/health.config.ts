@@ -1,11 +1,9 @@
 export const healthConfig = {
-  path: '/health',
-  timeout: 5000,
-  statusCode: 200,
-  responseType: 'json',
-  response: {
-    status: 'healthy',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString()
-  }
+    path: '/healthz',
+    statusCode: 200,
+    response: {
+        status: 'healthy',
+        version: process.env.npm_package_version || '1.0.0',
+        environment: process.env.NODE_ENV || 'development'
+    }
 };

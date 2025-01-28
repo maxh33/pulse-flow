@@ -1,6 +1,9 @@
 import client, { Counter } from 'prom-client';
 import { Express } from 'express';
 
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
 const collectDefaultMetrics = client.collectDefaultMetrics;
 collectDefaultMetrics();
 
