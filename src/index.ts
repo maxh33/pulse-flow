@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { connectDB } from './config/mongodb.config';
 import { orderRoutes } from './routes/order.routes';
 import { setupMetrics } from './monitoring/metrics';
+import { healthRoutes } from './routes/health.routes';
 import { setupKafkaConsumer } from './services/consumer.service';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -19,6 +20,7 @@ setupMetrics(app);
 
 // Routes
 app.use('/api/orders', orderRoutes);
+app.use(healthRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
