@@ -48,12 +48,12 @@ describe('Kafka Message Flow', () => {
     await producer.disconnect();
   });
 
-  it('should consume the message from Kafka', async () => {
+  it('should consume a message from Kafka', async () => {
     consumer = kafka.consumer({ groupId: `test-group-${uniqueSuffix}` });
     await consumer.connect();
     await consumer.subscribe({ topic, fromBeginning: true });
 
-    const receivedMessages: typeof message[] = [];
+    const receivedMessages: { key: string; value: string }[] = [];
 
     // Listen for messages and resolve when the expected message is received
     const messagePromise = new Promise<void>((resolve, reject) => {
