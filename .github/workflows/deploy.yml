@@ -31,6 +31,8 @@ jobs:
 
       - name: Test MongoDB Connection
         run: |
+          echo "Testing MongoDB connection..."
+          echo "MONGODB_URI is set: ${{ secrets.MONGODB_URI != '' }}"
           npm run test:mongodb
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
