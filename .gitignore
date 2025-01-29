@@ -5,6 +5,8 @@ dist/
 # Environment
 .env
 .env.local
+.env.*
+
 
 # Logs
 logs/
@@ -22,6 +24,8 @@ coverage/
 docker/grafana/data
 docker/prometheus/data
 docker/mongodb/data
+docker/grafana/*
+docker/prometheus/*
 
 # System Files
 .DS_Store
