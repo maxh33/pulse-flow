@@ -84,13 +84,9 @@ describe('Kafka Message Flow', () => {
 
     try {
       await messagePromise;
-    } catch (error) {
-      // If message not received, fail the test
-      throw error;
     } finally {
       await consumer.disconnect();
     }
-
     expect(receivedMessages).toContainEqual(message);
   });
 });

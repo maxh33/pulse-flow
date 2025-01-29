@@ -1,40 +1,57 @@
 import globals from "globals";
-import pluginJs from "@eslint/js";
-import tseslint from "typescript-eslint";
-
-
-/** @type {import('eslint').Linter.Config[]} */
+import js from "@eslint/js";
+import tseslint from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
-  {files: ["**/*.{js,mjs,cjs,ts}"]},
-  {files: ["**/*.js"], languageOptions: {sourceType: "commonjs"}},
-  {languageOptions: { globals: globals.browser }},
-  pluginJs.configs.recommended,
-  ...tseslint.configs.recommended,
+  js.configs.recommended,
   {
-    env: {
-      node: true,
-      es2021: true
+    files: ["**/*.{js,mjs,cjs,ts}"],
+    languageOptions: {
+      parser: tsParser,
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+        ...globals.jest // Add Jest globals
+      }
     },
-    extends: [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended",
-      "airbnb-base"
-    ],
-    parser: "@typescript-eslint/parser",
-    parserOptions: {
-      ecmaVersion: 12,
-      sourceType: "module"
+    plugins: {
+      "@typescript-eslint": tseslint
     },
-    plugins: [
-      "@typescript-eslint"
-    ],
     rules: {
+      ...tseslint.configs.recommended.rules,
       "import/extensions": "off",
       "import/no-unresolved": "off",
       "no-console": "off",
       "class-methods-use-this": "off",
-      "@typescript-eslint/no-explicit-any": "off"
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-require-imports": "off", // Allow require imports
+      "@typescript-eslint/no-unused-vars": ["error", { 
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }],
+      "no-undef": "off" // TypeScript handles this
+    }
+  },
+  {
+    files: ["**/*.js"],
+    languageOptions: {
+      sourceType: "commonjs"
+    }
+  },
+  {
+    files: ["**/*.test.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.jest
+      }
+    }
+  },
+  {
+    files: ["**/playground/*.mongodb.js"],
+    rules: {
+      "no-undef": "off" // Disable no-undef for MongoDB playground files
     }
   }
 ];
