@@ -1,16 +1,14 @@
 import { Router } from 'express';
-import { OrderService } from '../services/order.service';
-import { OrderModel } from '../models/order';
-
-
+import { TweetService } from '../services/tweet.service';
+import { TweetModel } from '../models/tweet';
 
 const router = Router();
-const orderService = new OrderService();
+const tweetService = new TweetService();
 
 router.post('/', async (req, res, next) => {
   try {
-    const order = await orderService.createOrder(req.body);
-    res.status(201).json(order);
+    const tweet = await tweetService.createTweet(req.body);
+    res.status(201).json(tweet);
   } catch (error) {
     next(error);
   }
@@ -18,13 +16,11 @@ router.post('/', async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const orders = await OrderModel.find();
-    res.json(orders);
+    const tweets = await TweetModel.find();
+    res.json(tweets);
   } catch (error) {
     next(error);
   }
 });
-
-
 
 export { router as orderRoutes };

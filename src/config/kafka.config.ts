@@ -6,7 +6,6 @@ const createKafkaClient = () => {
   const clientCertKey = process.env.KAFKA_CLIENT_CERT_KEY?.replace(/\\n/g, '\n');
   const trustedCert = process.env.KAFKA_TRUSTED_CERT?.replace(/\\n/g, '\n');
 
-
   // Debugging: Log whether each variable is set
   console.log('KAFKA_BROKERS:', brokers ? 'Set' : 'Not Set');
   console.log('KAFKA_CLIENT_CERT:', clientCert ? 'Set' : 'Not Set');
