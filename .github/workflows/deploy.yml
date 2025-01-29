@@ -20,25 +20,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Test MongoDB Connection
         run: |
-          npm install mongodb
-          node -e "
-            const { MongoClient } = require('mongodb');
-            async function testConnection() {
-              const client = new MongoClient(process.env.MONGODB_URI);
-              try {
-                await client.connect();
-                console.log('MongoDB connection successful');
-                await client.close();
-              } catch (err) {
-                console.error('MongoDB connection failed:', err);
-                process.exit(1);
-              }
-            }
-            testConnection();
-          "
+          npm run test:mongodb
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
