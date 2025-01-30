@@ -3,7 +3,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 describe('Kafka Connection', () => {
   it('should successfully connect to Kafka', async () => {
-    const isConnected = await validateKafkaConnection();
+    let isConnected = false;
+    try {
+      isConnected = await validateKafkaConnection();
+    } catch (error) {
+      console.error('Kafka connection failed:', error);
+    }
     expect(isConnected).toBe(true);
   });
 });
@@ -79,13 +84,9 @@ describe('Kafka Message Flow', () => {
 
     try {
       await messagePromise;
-    } catch (error) {
-      // If message not received, fail the test
-      throw error;
     } finally {
       await consumer.disconnect();
     }
-
     expect(receivedMessages).toContainEqual(message);
   });
 });

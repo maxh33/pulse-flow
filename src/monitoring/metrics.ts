@@ -35,6 +35,7 @@ export const setupMetrics = (app: Express) => {
       const metricsData = await metrics.metrics();
       res.send(metricsData);
     } catch (error) {
+      console.error('Metrics collection error:', error);
       errorCounter.inc({ type: 'metrics_collection' });
       res.status(500).send('Error collecting metrics');
     }
