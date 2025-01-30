@@ -49,18 +49,18 @@ jobs:
 
       - name: Create environment file
         run: |
-          cat << EOF > .env
+          cat > .env << 'EOL'
           PORT=3000
           NODE_ENV=production
           MONGODB_URI=${{ secrets.MONGODB_URI }}
+          KAFKA_CLIENT_CERT=$(echo '${{ secrets.KAFKA_CLIENT_CERT_BASE64 }}' | base64 --decode)
+          KAFKA_CLIENT_CERT_KEY=$(echo '${{ secrets.KAFKA_CLIENT_CERT_KEY_BASE64 }}' | base64 --decode)
+          KAFKA_TRUSTED_CERT=$(echo '${{ secrets.KAFKA_TRUSTED_CERT_BASE64 }}' | base64 --decode)
           KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }}
-          KAFKA_CLIENT_CERT=${{ secrets.KAFKA_CLIENT_CERT }}
-          KAFKA_CLIENT_CERT_KEY=${{ secrets.KAFKA_CLIENT_CERT_KEY }}
-          KAFKA_TRUSTED_CERT=${{ secrets.KAFKA_TRUSTED_CERT }}
           KAFKA_PREFIX=${{ secrets.KAFKA_PREFIX }}
           GRAFANA_CLOUD_URL=${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY=${{ secrets.GRAFANA_API_KEY }}
-          EOF
+          EOL
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
