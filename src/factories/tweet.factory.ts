@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { TweetData } from '../models/tweet';
+import { faker } from '@faker-js/faker';
 
 export interface TweetDocument extends TweetData, Document {}
 
@@ -34,21 +35,21 @@ const TweetModel = mongoose.model<TweetDocument>('Tweet', TweetSchema);
 
 export const createTweetData = (): TweetData => ({
   tweetId: new mongoose.Types.ObjectId().toHexString(),
-  user: `User${Math.floor(Math.random() * 1000)}`,
-  content: `This is a sample tweet content ${Math.floor(Math.random() * 1000)}`,
+  user: faker.internet.userName(),
+  content: faker.lorem.sentence(),
   timestamp: new Date(),
   metrics: {
-    retweets: Math.floor(Math.random() * 100),
-    likes: Math.floor(Math.random() * 1000),
-    comments: Math.floor(Math.random() * 500)
+    retweets: faker.number.int({ min: 0, max: 100 }),
+    likes: faker.number.int({ min: 0, max: 1000 }),
+    comments: faker.number.int({ min: 0, max: 500 })
   },
-  sentiment: ['positive', 'neutral', 'negative'][Math.floor(Math.random() * 3)] as 'positive' | 'neutral' | 'negative',
+  sentiment: faker.helpers.arrayElement(['positive', 'neutral', 'negative']),
   location: {
-    country: 'Country' + Math.floor(Math.random() * 100),
-    city: 'City' + Math.floor(Math.random() * 100)
+    country: faker.address.country(),
+    city: faker.address.city()
   },
-  platform: ['web', 'android', 'ios'][Math.floor(Math.random() * 3)] as 'web' | 'android' | 'ios',
-  tags: ['tag1', 'tag2', 'tag3'].filter(() => Math.random() > 0.5)
+  platform: faker.helpers.arrayElement(['web', 'android', 'ios']),
+  tags: faker.helpers.arrayElements(['tag1', 'tag2', 'tag3'], faker.number.int({ min: 0, max: 3 }))
 });
 
 export default TweetModel;

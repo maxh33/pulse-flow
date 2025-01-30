@@ -22,6 +22,20 @@ services:
       timeout: 10s
       retries: 3
 
+  continuous-insert:
+    build: .
+    command: node dist/scripts/continuous-insert.js
+    depends_on:
+      - app
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - KAFKA_CLIENT_CERT=${KAFKA_CLIENT_CERT}
+      - KAFKA_CLIENT_CERT_KEY=${KAFKA_CLIENT_CERT_KEY}
+      - KAFKA_TRUSTED_CERT=${KAFKA_TRUSTED_CERT}
+      - KAFKA_PREFIX=${KAFKA_PREFIX}
+    restart: always
+
   prometheus:
     image: prom/prometheus:latest
     volumes:

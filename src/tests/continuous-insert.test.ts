@@ -4,46 +4,7 @@ import { faker } from '@faker-js/faker';
 import { TweetService } from '../services/tweet.service';
 import { createTweetData } from '../factories/tweet.factory';
 import * as metrics from '../monitoring/metrics';
-// Define continuousInsert function directly in the test file to avoid circular import
-const continuousInsert = async () => {
-  let isRunning = true;
-
-  const handleShutdown = async (signal: string) => {
-    console.log(`Received ${signal}. Gracefully shutting down...`);
-    await TweetService.disconnect();
-    process.exit(0);
-  };
-
-  process.on('SIGINT', () => handleShutdown('SIGINT'));
-  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-
-  while (isRunning) {
-    try {
-      const tweetData = createTweetData();
-      await TweetService.createTweet(tweetData);
-      console.log({
-        timestamp: new Date().toISOString(),
-        insertCount: 1,
-        tweetId: tweetData.tweetId,
-        user: tweetData.user,
-        sentiment: tweetData.sentiment,
-        engagement: tweetData.metrics,
-        nextInsertDelay: faker.number.int({ min: 1000, max: 3000 })
-      });
-    } catch (error) {
-      console.error('Insert failed:', error);
-      metrics.errorCounter.inc({ type: 'continuous_insert' });
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-
-    const currentHour = new Date().getHours();
-    const delay = currentHour >= 9 && currentHour <= 17
-      ? faker.number.int({ min: 1000, max: 3000 })
-      : faker.number.int({ min: 5000, max: 10000 });
-
-    await new Promise(resolve => setTimeout(resolve, delay));
-  }
-};
+import { continuousInsert } from '../scripts/continuous-insert';
 import { TweetDocument } from '../models/tweet';
 
 jest.mock('../config/mongodb.config');
@@ -57,7 +18,7 @@ describe('continuousInsert', () => {
   let consoleSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
   
-  const mockTweet: TweetDocument = {
+  const mockTweet: TweetDocument ={
     tweetId: 'testTweetId',
     user: 'testUser',
     content: 'testContent',
@@ -78,12 +39,8 @@ describe('continuousInsert', () => {
     __v: 0,
     $assertPopulated: jest.fn(),
     $clearModifiedPaths: jest.fn(),
-    $createModifiedPathsSnapshot: jest.fn(),
     $clone: jest.fn(),
-    $getAllSubdocs: jest.fn(),
-    $ignore: jest.fn(),
-    $isDefault: jest.fn(),
-    // Add other missing properties as needed
+    $createModifiedPathsSnapshot: jest.fn(),
   };
 
   beforeAll(() => {
@@ -214,5 +171,3 @@ describe('continuousInsert', () => {
     }));
   });
 });
-
-export { continuousInsert };
