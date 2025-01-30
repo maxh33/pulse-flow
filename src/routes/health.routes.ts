@@ -2,7 +2,7 @@ import { Router } from 'express';
 import mongoose from 'mongoose';
 import { healthConfig } from '../config/health.config';
 import { Kafka } from 'kafkajs';
-import { orderCounter, errorCounter } from '../monitoring/metrics';
+import { tweetCounter, errorCounter } from '../monitoring/metrics';
 
 const router = Router();
 
@@ -29,7 +29,7 @@ router.get(healthConfig.path, async (req, res) => {
 
     // Get Metrics
     const metrics = {
-      ordersProcessed: await orderCounter.get(),
+      ordersProcessed: await tweetCounter.get(),
       errors: await errorCounter.get()
     };
 

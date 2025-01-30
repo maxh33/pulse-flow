@@ -10,6 +10,13 @@ export interface TweetData {
     likes: number;
     comments: number;
   };
+  sentiment: 'positive' | 'neutral' | 'negative';
+  location: {
+    country: string;
+    city: string;
+  };
+  platform: 'web' | 'android' | 'ios';
+  tags: string[];
 }
 
 const tweetSchema = new mongoose.Schema<TweetData>({

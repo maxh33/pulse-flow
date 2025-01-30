@@ -27,6 +27,8 @@ services:
     volumes:
       - ./docker/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
+      - ./docker/exporters/mongodb_exporter:/exporters/mongodb_exporter
+      - ./docker/exporters/kafka_exporter:/exporters/kafka_exporter
     ports:
       - "9090:9090"
     environment:
@@ -42,6 +44,20 @@ services:
       - "3001:3000"
     depends_on:
       - prometheus
+  
+  mongodb_exporter:
+    image: bitnami/mongodb-exporter:latest
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+    ports:
+      - "9216:9216"
+
+  kafka_exporter:
+    image: danielqsj/kafka-exporter:latest
+    environment:
+      - KAFKA_SERVER=${KAFKA_BROKERS}
+    ports:
+      - "9308:9308"
 
 volumes:
   prometheus_data:
