@@ -4,50 +4,10 @@ import Chance from 'chance';
 import { TweetService } from '../services/tweet.service';
 import { createTweetData } from '../factories/tweet.factory';
 import * as metrics from '../monitoring/metrics';
+import { continuousInsert } from '../scripts/continuous-insert';
+import { TweetDocument } from '../models/tweet';
 
 const chance = new Chance();
-
-// Define continuousInsert function directly in the test file to avoid circular import
-const continuousInsert = async () => {
-  let isRunning = true;
-
-  const handleShutdown = async (signal: string) => {
-    console.log(`Received ${signal}. Gracefully shutting down...`);
-    await TweetService.disconnect();
-    process.exit(0);
-  };
-
-  process.on('SIGINT', () => handleShutdown('SIGINT'));
-  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-
-  while (isRunning) {
-    try {
-      const tweetData = createTweetData();
-      await TweetService.createTweet(tweetData);
-      console.log({
-        timestamp: new Date().toISOString(),
-        insertCount: 1,
-        tweetId: tweetData.tweetId,
-        user: tweetData.user,
-        sentiment: tweetData.sentiment,
-        engagement: tweetData.metrics,
-        nextInsertDelay: chance.integer({ min: 1000, max: 3000 })
-      });
-    } catch (error) {
-      console.error('Insert failed:', error);
-      metrics.errorCounter.inc({ type: 'continuous_insert' });
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-
-    const currentHour = new Date().getHours();
-    const delay = currentHour >= 9 && currentHour <= 17
-      ? chance.integer({ min: 1000, max: 3000 })
-      : chance.integer({ min: 5000, max: 10000 });
-
-    await new Promise(resolve => setTimeout(resolve, delay));
-  }
-};
-import { TweetDocument } from '../models/tweet';
 
 jest.mock('../config/mongodb.config');
 jest.mock('chance');
@@ -81,12 +41,8 @@ describe('continuousInsert', () => {
     __v: 0,
     $assertPopulated: jest.fn(),
     $clearModifiedPaths: jest.fn(),
-    $createModifiedPathsSnapshot: jest.fn(),
     $clone: jest.fn(),
-    $getAllSubdocs: jest.fn(),
-    $ignore: jest.fn(),
-    $isDefault: jest.fn(),
-    // Add other missing properties as needed
+    $createModifiedPathsSnapshot: jest.fn(),
   };
 
   beforeAll(() => {
@@ -137,7 +93,7 @@ describe('continuousInsert', () => {
 
     jest.spyOn(Date.prototype, 'getHours')
       .mockReturnValueOnce(peakHour.getHours())
-    tweetServiceMock.createTweet.mockResolvedValue(mockTweet as any);
+      .mockReturnValueOnce(offPeakHour.getHours());
 
     tweetServiceMock.createTweet.mockResolvedValue(mockTweet as any);
 
@@ -217,5 +173,3 @@ describe('continuousInsert', () => {
     }));
   });
 });
-
-export { continuousInsert };

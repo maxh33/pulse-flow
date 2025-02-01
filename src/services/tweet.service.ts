@@ -3,6 +3,12 @@ import { TweetData, TweetModel } from '../models/tweet';
 import * as metrics from '../monitoring/metrics';
 
 export class TweetService {
+  static createTweet(_tweetData: TweetData) {
+    throw new Error('Method not implemented.');
+  }
+  static disconnect() {
+    throw new Error('Method not implemented.');
+  }
   private producer = kafka.producer();
   private isConnected = false;
 

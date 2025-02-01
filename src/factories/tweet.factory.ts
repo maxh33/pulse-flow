@@ -1,5 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { TweetData } from '../models/tweet';
+import Chance from 'chance';
+
+const chance = new Chance();
 
 export interface TweetDocument extends TweetData, Document {}
 
@@ -34,21 +37,21 @@ const TweetModel = mongoose.model<TweetDocument>('Tweet', TweetSchema);
 
 export const createTweetData = (): TweetData => ({
   tweetId: new mongoose.Types.ObjectId().toHexString(),
-  user: `User${Math.floor(Math.random() * 1000)}`,
-  content: `This is a sample tweet content ${Math.floor(Math.random() * 1000)}`,
+  user: chance.twitter(),
+  content: chance.sentence(),
   timestamp: new Date(),
   metrics: {
-    retweets: Math.floor(Math.random() * 100),
-    likes: Math.floor(Math.random() * 1000),
-    comments: Math.floor(Math.random() * 500)
+    retweets: chance.integer({ min: 0, max: 100 }),
+    likes: chance.integer({ min: 0, max: 1000 }),
+    comments: chance.integer({ min: 0, max: 500 })
   },
-  sentiment: ['positive', 'neutral', 'negative'][Math.floor(Math.random() * 3)] as 'positive' | 'neutral' | 'negative',
+  sentiment: chance.pickone(['positive', 'neutral', 'negative']),
   location: {
-    country: 'Country' + Math.floor(Math.random() * 100),
-    city: 'City' + Math.floor(Math.random() * 100)
+    country: chance.country({ full: true }),
+    city: chance.city()
   },
-  platform: ['web', 'android', 'ios'][Math.floor(Math.random() * 3)] as 'web' | 'android' | 'ios',
-  tags: ['tag1', 'tag2', 'tag3'].filter(() => Math.random() > 0.5)
+  platform: chance.pickone(['web', 'android', 'ios']),
+  tags: chance.pickset(['tag1', 'tag2', 'tag3'], chance.integer({ min: 0, max: 3 }))
 });
 
 export default TweetModel;

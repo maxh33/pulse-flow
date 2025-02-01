@@ -1,51 +1,71 @@
-import { Kafka, logLevel } from 'kafkajs';
+import { Kafka, KafkaConfig } from 'kafkajs';
+import { ConnectionOptions } from 'tls';
+import dotenv from 'dotenv';
 
-const createKafkaClient = () => {
-  const brokers = process.env.KAFKA_BROKERS;
-  const clientCert = process.env.KAFKA_CLIENT_CERT?.replace(/\\n/g, '\n');
-  const clientCertKey = process.env.KAFKA_CLIENT_CERT_KEY?.replace(/\\n/g, '\n');
-  const trustedCert = process.env.KAFKA_TRUSTED_CERT?.replace(/\\n/g, '\n');
+dotenv.config();
 
-  // Debugging: Log whether each variable is set
-  console.log('KAFKA_BROKERS:', brokers ? 'Set' : 'Not Set');
-  console.log('KAFKA_CLIENT_CERT:', clientCert ? 'Set' : 'Not Set');
-  console.log('KAFKA_CLIENT_CERT_KEY:', clientCertKey ? 'Set' : 'Not Set');
-  console.log('KAFKA_TRUSTED_CERT:', trustedCert ? 'Set' : 'Not Set');
+export const createKafkaClient = () => {
+  try {
+    const brokers = (process.env.KAFKA_URL || '').split(',').map(url => 
+      url.replace('kafka+ssl://', 'ssl://')
+    );
 
-  if (!brokers || !clientCert || !clientCertKey || !trustedCert) {
-    throw new Error('Missing Kafka configuration');
-  }
+    if (!brokers.length) {
+      throw new Error('No Kafka brokers configured');
+    }
 
-  return new Kafka({
-    clientId: 'pulse-flow',
-    brokers: brokers.split(',').map(broker => broker.replace('kafka+ssl://', '')),
-    ssl: {
+    // Certificates directly from environment variables
+    const ssl: ConnectionOptions = {
       rejectUnauthorized: true,
-      cert: clientCert,
-      key: clientCertKey,
-      ca: trustedCert,
-    },
-    retry: {
-      initialRetryTime: 100,
-      retries: 8
-    },
-    logLevel: logLevel.ERROR
-  });
+      ca: process.env.KAFKA_TRUSTED_CERT,
+      cert: process.env.KAFKA_CLIENT_CERT,
+      key: process.env.KAFKA_CLIENT_CERT_KEY
+    };
+
+    // Only log non-sensitive information
+    console.log('Kafka Configuration:', {
+      brokers,
+      hasCa: !!ssl.ca,
+      hasCert: !!ssl.cert,
+      hasKey: !!ssl.key
+    });
+
+    const config: KafkaConfig = {
+      clientId: 'pulse-flow',
+      brokers,
+      ssl,
+      connectionTimeout: 30000,
+      retry: {
+        initialRetryTime: 100,
+        retries: 5
+      }
+    };
+
+    return new Kafka(config);
+  } catch (error) {
+    console.error('Error creating Kafka client');
+    throw error;
+  }
+};
+
+export const validateKafkaConnection = async (): Promise<boolean> => {
+  const admin = kafka.admin();
+  try {
+    console.log('Attempting to connect to Kafka...');
+    await admin.connect();
+    const topics = await admin.listTopics();
+    console.log('Connected to Kafka successfully. Topics found:', topics.length);
+    return true;
+  } catch (error) {
+    console.error('Kafka connection validation error:', error instanceof Error ? error.message : 'Unknown error');
+    return false;
+  } finally {
+    try {
+      await admin.disconnect();
+    } catch (error) {
+      console.error('Error disconnecting admin:', error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
 };
 
 export const kafka = createKafkaClient();
-
-// connection management
-export const validateKafkaConnection = async () => {
-  const admin = kafka.admin();
-  try {
-    await admin.connect();
-    await admin.listTopics();
-    return true;
-  } catch (error) {
-    console.error('Kafka connection error:', error);
-    return false;
-  } finally {
-    await admin.disconnect();
-  }
-};

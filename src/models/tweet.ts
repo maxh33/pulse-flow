@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { Document, ObjectId } from 'mongodb';
 
 export interface TweetData {
   tweetId: string;
@@ -32,3 +33,49 @@ const tweetSchema = new mongoose.Schema<TweetData>({
 });
 
 export const TweetModel = mongoose.model<TweetData>('Tweet', tweetSchema);
+
+export interface TweetDocument extends Document {
+
+tweetId: string;
+
+user: string;
+
+content: string;
+
+timestamp: Date;
+
+metrics: {
+
+  retweets: number;
+
+  likes: number;
+
+  comments: number;
+
+};
+
+sentiment: string;
+
+location: {
+
+  country: string;
+
+  city: string;
+
+};
+
+platform: string;
+
+tags: string[];
+
+_id: ObjectId;
+
+__v: number;
+
+$assertPopulated: () => void;
+
+$clearModifiedPaths: () => void;
+
+$createModifiedPathsSnapshot: () => void;
+
+}
