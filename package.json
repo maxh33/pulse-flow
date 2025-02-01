@@ -17,9 +17,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@faker-js/faker": "^9.4.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.10",
+    "chance": "^1.1.12",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
+    "@types/chance": "^1.1.6",
     "@types/cors": "^2.8.17",
     "@types/faker": "^6.6.8",
     "@types/jest": "^29.5.14",

@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { TweetData } from '../models/tweet';
-import { faker } from '@faker-js/faker';
+import Chance from 'chance';
+
+const chance = new Chance();
 
 export interface TweetDocument extends TweetData, Document {}
 
@@ -35,21 +37,21 @@ const TweetModel = mongoose.model<TweetDocument>('Tweet', TweetSchema);
 
 export const createTweetData = (): TweetData => ({
   tweetId: new mongoose.Types.ObjectId().toHexString(),
-  user: faker.internet.userName(),
-  content: faker.lorem.sentence(),
+  user: chance.twitter(),
+  content: chance.sentence(),
   timestamp: new Date(),
   metrics: {
-    retweets: faker.number.int({ min: 0, max: 100 }),
-    likes: faker.number.int({ min: 0, max: 1000 }),
-    comments: faker.number.int({ min: 0, max: 500 })
+    retweets: chance.integer({ min: 0, max: 100 }),
+    likes: chance.integer({ min: 0, max: 1000 }),
+    comments: chance.integer({ min: 0, max: 500 })
   },
-  sentiment: faker.helpers.arrayElement(['positive', 'neutral', 'negative']),
+  sentiment: chance.pickone(['positive', 'neutral', 'negative']),
   location: {
-    country: faker.address.country(),
-    city: faker.address.city()
+    country: chance.country({ full: true }),
+    city: chance.city()
   },
-  platform: faker.helpers.arrayElement(['web', 'android', 'ios']),
-  tags: faker.helpers.arrayElements(['tag1', 'tag2', 'tag3'], faker.number.int({ min: 0, max: 3 }))
+  platform: chance.pickone(['web', 'android', 'ios']),
+  tags: chance.pickset(['tag1', 'tag2', 'tag3'], chance.integer({ min: 0, max: 3 }))
 });
 
 export default TweetModel;

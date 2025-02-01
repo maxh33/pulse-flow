@@ -1,9 +1,12 @@
 import { connectDB } from '../config/mongodb.config';
 import { ObjectId } from 'mongodb';
-import { faker } from '@faker-js/faker';
+import Chance from 'chance';
 import { TweetService } from '../services/tweet.service';
 import { createTweetData } from '../factories/tweet.factory';
 import * as metrics from '../monitoring/metrics';
+
+const chance = new Chance();
+
 // Define continuousInsert function directly in the test file to avoid circular import
 const continuousInsert = async () => {
   let isRunning = true;
@@ -28,7 +31,7 @@ const continuousInsert = async () => {
         user: tweetData.user,
         sentiment: tweetData.sentiment,
         engagement: tweetData.metrics,
-        nextInsertDelay: faker.number.int({ min: 1000, max: 3000 })
+        nextInsertDelay: chance.integer({ min: 1000, max: 3000 })
       });
     } catch (error) {
       console.error('Insert failed:', error);
@@ -38,8 +41,8 @@ const continuousInsert = async () => {
 
     const currentHour = new Date().getHours();
     const delay = currentHour >= 9 && currentHour <= 17
-      ? faker.number.int({ min: 1000, max: 3000 })
-      : faker.number.int({ min: 5000, max: 10000 });
+      ? chance.integer({ min: 1000, max: 3000 })
+      : chance.integer({ min: 5000, max: 10000 });
 
     await new Promise(resolve => setTimeout(resolve, delay));
   }
@@ -47,7 +50,7 @@ const continuousInsert = async () => {
 import { TweetDocument } from '../models/tweet';
 
 jest.mock('../config/mongodb.config');
-jest.mock('@faker-js/faker');
+jest.mock('chance');
 jest.mock('../services/tweet.service');
 jest.mock('../factories/tweet.factory');
 jest.mock('../monitoring/metrics');
@@ -94,8 +97,8 @@ describe('continuousInsert', () => {
     // Mock process.exit
     processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     
-    // Mock faker
-    (faker.number.int as jest.Mock).mockReturnValue(1000);
+    // Mock chance
+    (chance.integer as jest.Mock).mockReturnValue(1000);
     
     // Mock DB connection
     (connectDB as jest.Mock).mockResolvedValue(undefined);
@@ -141,12 +144,12 @@ describe('continuousInsert', () => {
     await continuousInsert();
     
     // First insert (peak hours)
-    expect(faker.number.int).toHaveBeenCalledWith({ min: 1000, max: 3000 });
+    expect(chance.integer).toHaveBeenCalledWith({ min: 1000, max: 3000 });
     
     jest.advanceTimersByTime(1000);
     
     // Second insert (off-peak hours)
-    expect(faker.number.int).toHaveBeenCalledWith({ min: 5000, max: 10000 });
+    expect(chance.integer).toHaveBeenCalledWith({ min: 5000, max: 10000 });
   });
 
   it('should handle tweet creation errors and retry', async () => {
