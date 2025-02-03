@@ -170,3 +170,4 @@ export class KafkaService {
 }
 
 export const kafkaService = KafkaService.getInstance();
+export const kafka = kafkaService['kafka'];

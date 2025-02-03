@@ -3,7 +3,17 @@ import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 import { errorCounter, kafkaPublishCounter } from '../monitoring/metrics';
 import { Kafka } from 'kafkajs';
-import { Counter } from 'prom-client';
+import { Registry, MetricObjectWithValues, MetricValue, MetricType } from 'prom-client';
+
+interface MetricData extends MetricObjectWithValues<MetricValue<string>> {
+  name: string;
+  help: string;
+  type: MetricType;
+  values: Array<{
+    value: number;
+    labels: Record<string, string>;
+  }>;
+}
 
 dotenv.config();
 
@@ -33,7 +43,7 @@ describe('KafkaService', () => {
       expect(isValid).toBe(true);
     }, 10000);
   });
-
+  // OK
   describe('Health Check', () => {
     it('should return health status', async () => {
       const health = await kafkaService.checkHealth();
@@ -41,7 +51,7 @@ describe('KafkaService', () => {
       expect(health).toHaveProperty('lastCheck');
       expect(health).toHaveProperty('details');
     });
-
+    // OK
     it('should cache health check results', async () => {
       const firstCheck = await kafkaService.checkHealth();
       const secondCheck = await kafkaService.checkHealth();
@@ -89,23 +99,35 @@ describe('KafkaService', () => {
     }, 30000);
 
     it('should increment publish counter on successful message', async () => {
-      const initialCount = await new Promise<number>((resolve) => {
-        resolve((kafkaPublishCounter.labels({ topic }) as Counter<string>).get());
-      });
+      const registry = new Registry();
+      await registry.registerMetric(kafkaPublishCounter);
+      
+      const initialMetrics = (await registry.getMetricsAsJSON()) as unknown as MetricData[];
+      const initialCount = initialMetrics.find(
+        (m: MetricData) => m.name === 'kafka_messages_published' && 
+        m.values.some(v => v.labels.topic === topic)
+      )?.values[0]?.value || 0;
       
       await kafkaService.publishMessage(topic, [{ value: 'test' }]);
       
-      const finalCount = await new Promise<number>((resolve) => {
-        resolve((kafkaPublishCounter.labels({ topic }) as Counter<string>).get());
-      });
+      const finalMetrics = (await registry.getMetricsAsJSON()) as unknown as MetricData[];
+      const finalCount = finalMetrics.find(
+        (m: MetricData) => m.name === 'kafka_messages_published' && 
+        m.values.some(v => v.labels.topic === topic)
+      )?.values[0]?.value || 0;
       
-      expect(Number(finalCount)).toBe(Number(initialCount) + 1);
+      expect(finalCount).toBe(initialCount + 1);
     });
   
     it('should increment error counter on failure', async () => {
-      const initialCount = await new Promise<number>((resolve) => {
-        resolve((errorCounter.labels({ type: 'kafka_publish' }) as Counter<string>).get());
-      });
+      const registry = new Registry();
+      await registry.registerMetric(errorCounter);
+      
+      const initialMetrics = (await registry.getMetricsAsJSON()) as unknown as MetricData[];
+      const initialCount = initialMetrics.find(
+        (m: MetricData) => m.name === 'error_count' && 
+        m.values.some(v => v.labels.type === 'kafka_publish')
+      )?.values[0]?.value || 0;
   
       try {
         await kafkaService.publishMessage('invalid-topic', [{ value: 'test' }]);
@@ -113,11 +135,13 @@ describe('KafkaService', () => {
         // Expected error
       }
   
-      const finalCount = await new Promise<number>((resolve) => {
-        resolve((errorCounter.labels({ type: 'kafka_publish' }) as Counter<string>).get());
-      });
-  
-      expect(Number(finalCount)).toBe(Number(initialCount) + 1);
+      const finalMetrics = (await registry.getMetricsAsJSON()) as unknown as MetricData[];
+      const finalCount = finalMetrics.find(
+        (m: MetricData) => m.name === 'error_count' && 
+        m.values.some(v => v.labels.type === 'kafka_publish')
+      )?.values[0]?.value || 0;
+      
+      expect(finalCount).toBe(initialCount + 1);
     });
 
     it('should retry failed operations according to retry options', async () => {
