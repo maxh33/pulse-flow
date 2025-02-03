@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { errorCounter } from '../monitoring/metrics';
 
 export const connectDB = async () => {
   try {
@@ -6,14 +7,36 @@ export const connectDB = async () => {
     if (!uri) {
       throw new Error('MongoDB URI is not defined');
     }
+
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
       waitQueueTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      heartbeatFrequencyMS: 10000,
+      retryWrites: true,
+      w: 'majority'
     });
-    console.log('MongoDB Connected...');
+
+    // Add connection monitoring
+    mongoose.connection.on('connected', () => {
+      console.log('MongoDB Connected Successfully');
+    });
+
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB Connection Error:', err);
+      errorCounter.inc({ type: 'mongodb_connection' });
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.warn('MongoDB Disconnected');
+      errorCounter.inc({ type: 'mongodb_disconnect' });
+    });
+
   } catch (error) {
     console.error('MongoDB connection error:', error);
+    errorCounter.inc({ type: 'mongodb_initial_connection' });
     process.exit(1);
   }
 };
