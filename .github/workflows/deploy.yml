@@ -53,11 +53,6 @@ jobs:
           PORT=3000
           NODE_ENV=production
           MONGODB_URI=${{ secrets.MONGODB_URI }}
-          KAFKA_CLIENT_CERT=$(echo '${{ secrets.KAFKA_CLIENT_CERT_BASE64 }}' | base64 --decode)
-          KAFKA_CLIENT_CERT_KEY=$(echo '${{ secrets.KAFKA_CLIENT_CERT_KEY_BASE64 }}' | base64 --decode)
-          KAFKA_TRUSTED_CERT=$(echo '${{ secrets.KAFKA_TRUSTED_CERT_BASE64 }}' | base64 --decode)
-          KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }}
-          KAFKA_PREFIX=${{ secrets.KAFKA_PREFIX }}
           GRAFANA_CLOUD_URL=${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY=${{ secrets.GRAFANA_API_KEY }}
           EOL
@@ -81,13 +76,9 @@ jobs:
 
       - name: Deploy with Docker Compose
         run: |
+          docker network create pulse-flow_app_network || true
           docker-compose -f docker-compose.prod.yml up -d
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          KAFKA_BROKERS: ${{ secrets.KAFKA_BROKERS }}
-          KAFKA_CLIENT_CERT: ${{ secrets.KAFKA_CLIENT_CERT }}
-          KAFKA_CLIENT_CERT_KEY: ${{ secrets.KAFKA_CLIENT_CERT_KEY }}
-          KAFKA_TRUSTED_CERT: ${{ secrets.KAFKA_TRUSTED_CERT }}
-          KAFKA_PREFIX: ${{ secrets.KAFKA_PREFIX }}
           GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}

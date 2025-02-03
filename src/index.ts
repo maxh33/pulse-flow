@@ -5,7 +5,6 @@ import { connectDB } from './config/mongodb.config';
 import { orderRoutes } from './routes/order.routes';
 import { setupMetrics } from './monitoring/metrics';
 import { healthRoutes } from './routes/health.routes';
-import { setupKafkaConsumer } from './services/consumer.service';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -32,10 +31,6 @@ const startServer = async () => {
     // Connect to MongoDB
     await connectDB();
     console.log('MongoDB Connected...');
-
-    // Setup Kafka Consumer
-    await setupKafkaConsumer();
-    console.log('Kafka Consumer Setup Complete...');
 
     // Start Express server
     app.listen(PORT, () => {

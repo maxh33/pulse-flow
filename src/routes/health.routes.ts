@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { healthConfig } from '../config/health.config';
-import { Kafka } from 'kafkajs';
 import { tweetCounter, errorCounter } from '../monitoring/metrics';
 
 const router = Router();
@@ -10,22 +9,6 @@ router.get(healthConfig.path, async (req, res) => {
   try {
     // MongoDB Status
     const dbStatus = mongoose.connection.readyState === 1;
-
-    // Kafka Status Check
-    let kafkaStatus = 'disconnected';
-    try {
-      const kafka = new Kafka({
-        clientId: 'health-check',
-        brokers: process.env.KAFKA_BROKERS?.split(',') || []
-      });
-      const admin = kafka.admin();
-      await admin.connect();
-      await admin.listTopics();
-      await admin.disconnect();
-      kafkaStatus = 'connected';
-    } catch (error) {
-      console.error('Kafka health check failed:', error);
-    }
 
     // Get Metrics
     const metrics = {
@@ -42,7 +25,6 @@ router.get(healthConfig.path, async (req, res) => {
       uptime: process.uptime(),
       services: {
         database: dbStatus ? 'connected' : 'disconnected',
-        kafka: kafkaStatus,
         api: 'healthy'
       },
       metrics,
@@ -58,7 +40,7 @@ router.get(healthConfig.path, async (req, res) => {
     };
 
     // Set status code based on service health
-    const isHealthy = dbStatus && kafkaStatus === 'connected';
+    const isHealthy = dbStatus;
     const statusCode = isHealthy ? healthConfig.statusCode : 503;
 
     res.status(statusCode).json(response);
