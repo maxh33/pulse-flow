@@ -1,4 +1,3 @@
-// Insert sample tweets
 db.tweets.insertMany([
   {
     tweetId: "TWEET001",

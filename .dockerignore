@@ -1,0 +1,45 @@
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Logs
+logs/
+*.log
+
+# Build output
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker files
+docker-compose.override.yml
+docker-compose.debug.yml
+docker-compose.test.yml
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage directory used by testing tools
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Git files
+.git/
+.gitignore
+
+# Exclude test files
+src/tests/
