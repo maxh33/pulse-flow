@@ -1,7 +1,7 @@
 networks:
   app_network:
       name: pulse-flow_app_network
-      driver: bridge
+      external: true
 services:
   app:
     networks:
