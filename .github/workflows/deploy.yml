@@ -83,6 +83,8 @@ jobs:
       - name: Deploy with Docker Compose
         run: |
           docker-compose -f docker-compose.prod.yml up -d
+          # Wait for app to be healthy
+          timeout 60 bash -c 'until docker ps | grep pulse-flow-app | grep -q healthy; do sleep 2; done'
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}

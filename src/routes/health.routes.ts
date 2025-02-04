@@ -5,6 +5,11 @@ import { tweetCounter, errorCounter } from '../monitoring/metrics';
 
 const router = Router();
 
+// Simple ping endpoint for basic health check
+router.get('/ping', async (req, res) => {
+  res.status(200).send('Ok');
+});
+    // Detailed health check endpoint
 router.get('/healthz', async (req, res) => {
   try {
     // Check MongoDB connection
@@ -47,7 +52,6 @@ router.get('/healthz', async (req, res) => {
         platform: process.platform
       }
     };
-
     const statusCode = dbStatus ? 200 : 503;
     res.status(statusCode).json(response);
 
@@ -59,10 +63,6 @@ router.get('/healthz', async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? (error as Error).message : 'Service unavailable'
     });
   }
-});
-
-router.get('/ping', (_req, res) => {
-  res.status(200).send('pong');
 });
 
 export { router as healthRoutes };
