@@ -5,9 +5,6 @@ describe('MongoDB Connection', () => {
   afterAll(async () => {
     await mongoose.disconnect();
   });
-  afterAll(async () => {
-    await mongoose.disconnect();
-  });
 
   it('should connect to MongoDB successfully', async () => {
     try {
