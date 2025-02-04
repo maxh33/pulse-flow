@@ -9,6 +9,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  JENKINS_ADMIN_ID: admin
+  JENKINS_ADMIN_PASSWORD: ${{ secrets.JENKINS_ADMIN_PASSWORD }}
 
 jobs:
   build-and-deploy:
@@ -73,12 +75,58 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
+      - name: Setup Network and Volumes
+        run: |
+          docker network create pulse-flow_app_network || true
+          docker volume create jenkins_home || true
+          docker volume create prometheus_data || true
+          docker volume create grafana_data || true
 
       - name: Deploy with Docker Compose
         run: |
-          docker network create pulse-flow_app_network || true
           docker-compose -f docker-compose.prod.yml up -d
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          JENKINS_ADMIN_ID: ${{ env.JENKINS_ADMIN_ID }}
+          JENKINS_ADMIN_PASSWORD: ${{ env.JENKINS_ADMIN_PASSWORD }}
+
+      - name: Wait for Jenkins
+        run: |
+          timeout 300 bash -c 'while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' localhost:8080)" != "200" ]]; do sleep 5; done' || false
+
+      - name: Configure Jenkins
+        run: |
+          # Get Jenkins CLI
+          wget http://localhost:8080/jnlpJars/jenkins-cli.jar
+
+          # Create Jenkins API token
+          curl -X POST \
+            -u "${JENKINS_ADMIN_ID}:${JENKINS_ADMIN_PASSWORD}" \
+            -H "Content-Type: application/json" \
+            --data '{"newTokenName": "github-actions"}' \
+            http://localhost:8080/me/descriptorByName/jenkins.security.ApiTokenProperty/generateNewToken
+
+          # Install suggested plugins
+          java -jar jenkins-cli.jar -s http://localhost:8080/ \
+            -auth ${JENKINS_ADMIN_ID}:${JENKINS_ADMIN_PASSWORD} \
+            install-plugin workflow-aggregator git github docker-workflow
+
+      - name: Create Jenkins Pipeline
+        run: |
+          java -jar jenkins-cli.jar -s http://localhost:8080/ \
+            -auth ${JENKINS_ADMIN_ID}:${JENKINS_ADMIN_PASSWORD} \
+            create-job pulse-flow-pipeline < jenkins/job.xml
+
+      - name: Verify Deployment
+        run: |
+          echo "Checking service status..."
+          docker-compose ps
+          
+          echo "Checking Jenkins..."
+          curl -f http://localhost:8080/login
+          
+          echo "Checking app..."
+          curl -f http://localhost:3000/healthz

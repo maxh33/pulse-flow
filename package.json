@@ -13,6 +13,8 @@
     "docker:dev": "docker-compose -f docker-compose.dev.yml up",
     "docker:prod": "docker-compose -f docker-compose.prod.yml up",
     "docker:build": "docker-compose -f docker-compose.prod.yml build",
+    "jenkins:status": "docker ps | grep jenkins",
+    "jenkins:logs": "docker logs jenkins",
     "dev:insert": "ts-node-dev --respawn --transpile-only src/scripts/continuous-insert.ts"
 
   },
