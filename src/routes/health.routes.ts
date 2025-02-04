@@ -10,6 +10,15 @@ router.get('/healthz', async (req, res) => {
     // Check MongoDB connection
     const dbStatus = mongoose.connection.readyState === 1;
 
+    if (!dbStatus) {
+      // Try to reconnect if disconnected
+      try {
+        await mongoose.connect(process.env.MONGODB_URI!);
+      } catch {
+        errorCounter.inc({ type: 'mongodb_reconnect' });
+        throw new Error('Database reconnection failed');
+      }
+    }
     // Get Metrics
     const metrics = {
       ordersProcessed: await tweetCounter.get(),
@@ -41,13 +50,13 @@ router.get('/healthz', async (req, res) => {
 
     const statusCode = dbStatus ? 200 : 503;
     res.status(statusCode).json(response);
+
   } catch (error) {
     errorCounter.inc({ type: 'health_check' });
     res.status(503).json({
-      status: 'error',
+      status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      message: 'Service unavailable',
-      error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+      error: process.env.NODE_ENV === 'development' ? (error as Error).message : 'Service unavailable'
     });
   }
 });

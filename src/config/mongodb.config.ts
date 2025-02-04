@@ -29,14 +29,19 @@ export const connectDB = async () => {
       errorCounter.inc({ type: 'mongodb_connection' });
     });
 
-    mongoose.connection.on('disconnected', () => {
-      console.warn('MongoDB Disconnected');
-      errorCounter.inc({ type: 'mongodb_disconnect' });
+    mongoose.connection.on('disconnected', async () => {
+      console.warn('MongoDB Disconnected - Attempting to reconnect...');
+      try {
+        await mongoose.connect(uri);
+      } catch (error) {
+        console.error('MongoDB Reconnection Error:', error);
+        errorCounter.inc({ type: 'mongodb_disconnect' });
+      }
     });
 
   } catch (error) {
     console.error('MongoDB connection error:', error);
     errorCounter.inc({ type: 'mongodb_initial_connection' });
-    process.exit(1);
+    throw error; // Don't exit process, let caller handle it
   }
 };
