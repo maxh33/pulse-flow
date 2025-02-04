@@ -26,12 +26,13 @@ export const connectDB = async () => {
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.warn('MongoDB Disconnected');
-      errorCounter.inc({ type: 'mongodb_disconnect' });
+      if (process.env.NODE_ENV !== 'test') {
+        console.warn('MongoDB Disconnected');
+        errorCounter.inc({ type: 'mongodb_disconnect' });
+      }
     });
 
     return mongoose.connection;
-
   } catch (error) {
     console.error('MongoDB connection error:', error);
     errorCounter.inc({ type: 'mongodb_initial_connection' });
