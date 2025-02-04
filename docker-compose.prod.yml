@@ -8,16 +8,15 @@ services:
       - app_network
     container_name: pulse-flow-app
     image: ghcr.io/${GITHUB_REPOSITORY:-pulse-flow}:latest
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: production
     deploy:
       resources:
         limits:
           memory: 1G
           cpus: '1'
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     environment:
       - NODE_ENV=production
       - PORT=${PORT:-3000}
@@ -27,7 +26,7 @@ services:
     ports:
       - "${PORT:-3000}:3000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      test: ["CMD-SHELL", "curl", "-f", "http://localhost:3000/healthz || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -47,12 +46,6 @@ services:
       - MONGODB_URI=${MONGODB_URI}
     networks:
       - app_network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/healthz')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
@@ -86,7 +79,7 @@ services:
     depends_on:
       - prometheus
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
     restart: unless-stopped
 
   mongodb_exporter:
@@ -104,7 +97,6 @@ services:
     ports:
       - "8080:8080"
       - "50000:50000"
-    
     environment:
       - JENKINS_OPTS="--prefix=/jenkins"
       - JAVA_OPTS="-Xmx2g -Djava.awt.headless=true"

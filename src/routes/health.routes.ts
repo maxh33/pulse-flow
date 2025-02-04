@@ -5,9 +5,9 @@ import { tweetCounter, errorCounter } from '../monitoring/metrics';
 
 const router = Router();
 
-router.get(healthConfig.path, async (req, res) => {
+router.get('/healthz', async (req, res) => {
   try {
-    // MongoDB Status
+    // Check MongoDB connection
     const dbStatus = mongoose.connection.readyState === 1;
 
     // Get Metrics
@@ -24,7 +24,7 @@ router.get(healthConfig.path, async (req, res) => {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       services: {
-        database: dbStatus ? 'connected' : 'disconnected',
+        database: status ? 'connected' : 'disconnected',
         api: 'healthy'
       },
       metrics,
@@ -39,24 +39,20 @@ router.get(healthConfig.path, async (req, res) => {
       }
     };
 
-    // Set status code based on service health
-    const isHealthy = dbStatus;
-    const statusCode = isHealthy ? healthConfig.statusCode : 503;
-
+    const statusCode = dbStatus ? 200 : 503;
     res.status(statusCode).json(response);
   } catch (error) {
-    errorCounter.inc();
+    errorCounter.inc({ type: 'health_check' });
     res.status(503).json({
       status: 'error',
       timestamp: new Date().toISOString(),
       message: 'Service unavailable',
-      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     });
   }
 });
 
-// Ping endpoint for basic availability checks
-router.get('/ping', (req, res) => {
+router.get('/ping', (_req, res) => {
   res.status(200).send('pong');
 });
 
