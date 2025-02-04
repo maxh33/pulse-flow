@@ -41,7 +41,7 @@ RUN npm ci --only=production
 COPY --from=builder /usr/src/app/dist ./dist
 
 # Add healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:3000/healthz || exit 1
 
 EXPOSE 3000
