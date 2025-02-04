@@ -24,7 +24,7 @@ router.get('/healthz', async (req, res) => {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       services: {
-        database: status ? 'connected' : 'disconnected',
+        database: dbStatus ? 'connected' : 'disconnected',
         api: 'healthy'
       },
       metrics,
