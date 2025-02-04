@@ -1,10 +1,9 @@
-version: '3.8'
-
 services:
   app:
     networks:
       - app_network
     container_name: pulse-flow-app
+    image: ghcr.io/${GITHUB_REPOSITORY:-pulse-flow}:latest
     deploy:
       resources:
         limits:
@@ -15,8 +14,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-    image: ghcr.io/${GITHUB_REPOSITORY}:latest
     environment:
       - NODE_ENV=production
       - PORT=${PORT:-3000}
@@ -33,6 +30,10 @@ services:
     restart: unless-stopped
 
   continuous-insert:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
     container_name: pulse-flow-inserter
     command: node dist/scripts/continuous-insert.js
     depends_on:

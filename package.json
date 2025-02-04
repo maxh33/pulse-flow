@@ -5,12 +5,16 @@
   "scripts": {
     "test": "jest",
     "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "test:watch": "jest --watch",
-    "test:kafka": "jest src/tests/kafka.test.ts",
     "insert-sample-tweets": "ts-node src/scripts/insert-sample-tweets.ts",
-    "test:mongodb": "jest src/tests/mongodb.test.ts"
+    "test:mongodb": "jest src/tests/mongodb.test.ts",
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up",
+    "docker:prod": "docker-compose -f docker-compose.prod.yml up",
+    "docker:build": "docker-compose -f docker-compose.prod.yml build",
+    "dev:insert": "ts-node-dev --respawn --transpile-only src/scripts/continuous-insert.ts"
+
   },
   "keywords": [],
   "author": "",
@@ -25,7 +29,6 @@
     "express": "^4.21.2",
     "helmet": "^8.0.0",
     "hot-shots": "^10.2.1",
-    "kafkajs": "^2.2.4",
     "mongodb": "^6.13.0",
     "mongoose": "^8.9.5",
     "opossum": "^8.4.0",
