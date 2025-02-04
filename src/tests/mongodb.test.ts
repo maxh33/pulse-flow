@@ -3,7 +3,10 @@ import mongoose from 'mongoose';
 
 describe('MongoDB Connection', () => {
   afterAll(async () => {
-    await mongoose.connection.close();
+    await mongoose.disconnect();
+  });
+  afterAll(async () => {
+    await mongoose.disconnect();
   });
 
   it('should connect to MongoDB successfully', async () => {
@@ -14,5 +17,5 @@ describe('MongoDB Connection', () => {
       console.error('MongoDB connection failed:', error);
       throw error; 
     }
-  });
+  }, 10000);
 });

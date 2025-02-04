@@ -20,24 +20,17 @@ export const connectDB = async () => {
     });
 
     // Add connection monitoring
-    mongoose.connection.on('connected', () => {
-      console.log('MongoDB Connected Successfully');
-    });
-
     mongoose.connection.on('error', (err) => {
       console.error('MongoDB Connection Error:', err);
       errorCounter.inc({ type: 'mongodb_connection' });
     });
 
-    mongoose.connection.on('disconnected', async () => {
-      console.warn('MongoDB Disconnected - Attempting to reconnect...');
-      try {
-        await mongoose.connect(uri);
-      } catch (error) {
-        console.error('MongoDB Reconnection Error:', error);
-        errorCounter.inc({ type: 'mongodb_disconnect' });
-      }
+    mongoose.connection.on('disconnected', () => {
+      console.warn('MongoDB Disconnected');
+      errorCounter.inc({ type: 'mongodb_disconnect' });
     });
+
+    return mongoose.connection;
 
   } catch (error) {
     console.error('MongoDB connection error:', error);
