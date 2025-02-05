@@ -74,16 +74,16 @@ jobs:
           sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
 
-      - name: Setup Network
+      - name: Setup and Deploy
         run: |
-          docker network rm pulse-flow_app_network || true
-          docker network create pulse-flow_app_network
-
-      - name: Deploy with Docker Compose
-        run: |
-          docker-compose -f docker-compose.prod.yml up -d
-          # Wait for app to be healthy
-          timeout 60 bash -c 'until docker ps | grep pulse-flow-app | grep -q healthy; do sleep 2; done'
+          # Clean up existing deployment first
+          bash scripts/cleanup.sh
+          
+          # Initialize network with proper labels
+          bash scripts/init-network.sh
+          
+          # Deploy with proper project name
+          COMPOSE_PROJECT_NAME=pulse-flow docker-compose -f docker-compose.prod.yml up -d
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}
@@ -93,17 +93,10 @@ jobs:
           JENKINS_ADMIN_PASSWORD: ${{ secrets.JENKINS_ADMIN_PASSWORD }}
 
       - name: Verify Deployment
-        run: |
-          echo "Verifying deployment..."
-          npm run verify:deployment
-        env:
-          APP_URL: http://localhost:3000
-          HEALTH_CHECK_RETRIES: 5
-          HEALTH_CHECK_INTERVAL: 10000
-        timeout-minutes: 5
+        run: npm run verify:deployment
 
       - name: Cleanup on Failure
         if: failure()
         run: |
-          docker-compose down --volumes --remove-orphans
+          docker-compose -f docker-compose.prod.yml down --volumes --remove-orphans || true
           docker network rm pulse-flow_app_network || true

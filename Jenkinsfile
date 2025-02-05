@@ -25,7 +25,19 @@ pipeline {
 
         stage('Setup Network') {
             steps {
-                sh 'docker network create ${DOCKER_NETWORK} || true'
+                script {
+                    sh '''
+                        # Remove existing network if it exists
+                        docker network rm ${DOCKER_NETWORK} || true
+                        
+                        # Create network with proper labels
+                        docker network create \
+                            --driver bridge \
+                            --label com.docker.compose.network=app_network \
+                            --label com.docker.compose.project=pulse-flow \
+                            ${DOCKER_NETWORK}
+                    '''
+                }
             }
         }
         stage('Checkout') {
