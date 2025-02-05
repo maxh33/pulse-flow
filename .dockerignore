@@ -20,6 +20,7 @@ build/
 docker-compose.override.yml
 docker-compose.debug.yml
 docker-compose.test.yml
+docker-compose.dev.yml
 
 # IDE files
 .idea/

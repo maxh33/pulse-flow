@@ -1,9 +1,15 @@
+networks:
+  dev_network:
+    name: pulse-flow_dev_network
+    driver: bridge
+
 services:
   app:
     build:
       context: .
       target: development
     container_name: pulse-flow-app-dev
+    working_dir: /usr/src/app
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
@@ -12,8 +18,20 @@ services:
       - PORT=3000
       - MONGODB_URI=${MONGODB_URI}
     ports:
-      - "3000:3000"
-    command: npm run dev
+      - "3000:3000"  # Port for easier debugging
+    command: >
+      sh -c "npm install &&
+      npm run dev"
+    networks:
+      - dev_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s  # Increased to give more time for development startup
+    restart: unless-stopped
+
 
   continuous-insert:
     build:
@@ -26,28 +44,95 @@ services:
     environment:
       - NODE_ENV=development
       - MONGODB_URI=${MONGODB_URI}
-    command: npm run dev:insert
+      - PORT=3001
+    command: ["npm", "run", "dev:insert"]
+    networks:
+      - dev_network
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus-dev
     volumes:
-      - ./docker/prometheus:/etc/prometheus
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
+    networks:
+      - dev_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana-dev
     volumes:
-      - ./docker/grafana:/etc/grafana
+      - ./docker/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "3001:3000"
+      - "3001:3001"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_HTTP_PORT=3001
+    networks:
+      - dev_network
+    depends_on:
+      - prometheus
+
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: jenkins-dev
+    user: root
+    privileged: true
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      - JENKINS_OPTS="--prefix=/jenkins"
+      - JAVA_OPTS=-Xmx2g 
+      - JENKINS_URL=http://jenkins:8080
+      - JENKINS_ADMIN_ID=admin
+      - JENKINS_ADMIN_PASSWORD=admin  # Simple pw for development
+    volumes:
+      - jenkins_home_dev:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./jenkins/casc.yml:/var/jenkins_home/casc.yml:ro
+      - ./jenkins/plugins.txt:/usr/share/jenkins/ref/plugins.txt:ro
+    networks:
+      - dev_network
+    healthcheck:
+      test: curl -f http://localhost:8080/login || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  mongodb_exporter:
+    image: bitnami/mongodb-exporter:latest
+    container_name: mongodb-exporter-dev
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+    command: 
+      - --mongodb.uri=${MONGODB_URI}
+      - --mongodb.direct-connect=false
+      - --collecting.database=true
+      - --collecting.collection=true
+    ports:
+      - "9216:9216"
+    networks:
+      - dev_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9216/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   prometheus_data:
   grafana_data:
+  jenkins_home_dev:

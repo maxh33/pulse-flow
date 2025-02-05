@@ -1,8 +1,11 @@
+import mongoose from 'mongoose';
 import { TweetData, TweetModel } from '../models/tweet';
 import * as metrics from '../monitoring/metrics';
 
+
+
 export class TweetService {
-  async createTweet(tweetData: TweetData) {
+  async createTweet(tweetData: any) {
     try {
       // Store in MongoDB
       const tweet = await TweetModel.create(tweetData);
@@ -22,8 +25,12 @@ export class TweetService {
       throw error;
     }
   }
+  async disconnect(): Promise<void> {
+    await mongoose.disconnect();
+  }
 
   // Method for bulk operations via Jenkins
+
   async createBatchTweets(tweets: TweetData[]) {
     const results = [];
     for (const tweet of tweets) {

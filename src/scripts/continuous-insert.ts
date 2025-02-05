@@ -3,7 +3,6 @@ import Chance from 'chance';
 import { TweetService } from '../services/tweet.service';
 import { createTweetData } from '../factories/tweet.factory';
 import * as metrics from '../monitoring/metrics';
-import mongoose from 'mongoose';
 
 const chance = new Chance();
 const tweetService = new TweetService();
@@ -14,27 +13,24 @@ export const continuousInsert = async (options?: { maxIterations?: number }) => 
 
   try {
     await connectDB();
-    console.log('Connected to MongoDB');
+    console.log('Connected to MongoDB - Starting continuous insert...');
 
     const handleShutdown = async (signal: string) => {
       console.log(`Received ${signal}. Gracefully shutting down...`);
-      await mongoose.disconnect();
+      await tweetService.disconnect();
       process.exit(0);
     };
 
-    if (process.env.NODE_ENV !== 'test') {
-      process.on('SIGINT', () => handleShutdown('SIGINT'));
-      process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-    }
+    process.on('SIGINT', () => handleShutdown('SIGINT'));
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 
     while (iterationCount < maxIterations) {
-      iterationCount++;
-      
       try {
         const tweetData = createTweetData();
         const tweet = await tweetService.createTweet(tweetData);
         
         metrics.tweetCounter.inc({ status: 'created' });
+        iterationCount++;
 
         console.log({
           timestamp: new Date().toISOString(),
@@ -45,19 +41,19 @@ export const continuousInsert = async (options?: { maxIterations?: number }) => 
           engagement: tweet.metrics
         });
 
+        // Dynamic delay based on hour
+        const currentHour = new Date().getHours();
+        const delay = currentHour >= 9 && currentHour <= 17
+          ? chance.integer({ min: 1000, max: 3000 })  // Business hours
+          : chance.integer({ min: 5000, max: 10000 }); // Off hours
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+
       } catch (error) {
         console.error('Insert failed:', error);
         metrics.errorCounter.inc({ type: 'continuous_insert' });
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
-
-      // Dynamic delay based on hour
-      const currentHour = new Date().getHours();
-      const delay = currentHour >= 9 && currentHour <= 17
-        ? chance.integer({ min: 1000, max: 3000 })  // Business hours
-        : chance.integer({ min: 5000, max: 10000 }); // Off hours
-
-      await new Promise(resolve => setTimeout(resolve, delay));
     }
   } catch (error) {
     console.error('Failed to start continuous insert:', error);
@@ -65,7 +61,3 @@ export const continuousInsert = async (options?: { maxIterations?: number }) => 
     process.exit(1);
   }
 };
-
-if (require.main === module) {
-  continuousInsert().catch(console.error);
-}

@@ -2,9 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { connectDB } from './config/mongodb.config';
-import { orderRoutes } from './routes/order.routes';
 import { setupMetrics } from './monitoring/metrics';
 import { healthRoutes } from './routes/health.routes';
+import { pingRoutes } from './routes/ping.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -18,8 +18,8 @@ app.use(express.json());
 setupMetrics(app);
 
 // Routes
-app.use('/api/orders', orderRoutes);
 app.use(healthRoutes);
+app.use(pingRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

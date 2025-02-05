@@ -50,10 +50,24 @@ EXPOSE 3000
 CMD ["npm", "start"]
 
 # Development stage
-FROM builder AS development
+FROM node:18-slim AS development
 
-# Install development dependencies
+WORKDIR /usr/src/app
+
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package*.json ./
+
+# Install ALL dependencies (including devDependencies)
 RUN npm install
+
+# Install ts-node-dev globally
+RUN npm install -g ts-node-dev
+
+# Copy source code
+COPY . .
 
 # Set development environment
 ENV NODE_ENV=development
