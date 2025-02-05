@@ -63,7 +63,6 @@ describe('continuousInsert', () => {
     // Setup createTweetData mock
     (createTweetData as jest.Mock).mockReturnValue(mockTweet);
   });
-
   afterEach(() => {
     jest.clearAllMocks();
     jest.useRealTimers();
@@ -103,7 +102,6 @@ describe('continuousInsert', () => {
     expect(metrics.errorCounter.inc).toHaveBeenCalledWith({ type: 'continuous_insert_startup' });
     expect(processExitSpy).toHaveBeenCalledWith(1);
   });
-
   it('should handle graceful shutdown', async () => {
     // Start continuous insert
     const promise = continuousInsert({ maxIterations: 1 });

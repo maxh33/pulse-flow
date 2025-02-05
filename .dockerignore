@@ -44,3 +44,6 @@ temp/
 
 # Exclude test files
 src/tests/
+
+# Docs
+docs/

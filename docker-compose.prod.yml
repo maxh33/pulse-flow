@@ -1,7 +1,7 @@
 networks:
   app_network:
-      name: pulse-flow_app_network
-      external: true
+    name: pulse-flow_app_network
+
 services:
   app:
     networks:
@@ -21,32 +21,11 @@ services:
       - NODE_ENV=production
       - PORT=${PORT:-3000}
       - MONGODB_URI=${MONGODB_URI}
-      - GRAFANA_CLOUD_URL=${GRAFANA_CLOUD_URL}
-      - GRAFANA_API_KEY=${GRAFANA_API_KEY}
-    ports:
-      - "${PORT:-3000}:3000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-
-  continuous-insert:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
-    container_name: pulse-flow-inserter
-    command: node dist/scripts/continuous-insert.js
-    depends_on:
-      app:
-        condition: service_healthy
-    environment:
-      - MONGODB_URI=${MONGODB_URI}
-    networks:
-      - app_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   prometheus:
     image: prom/prometheus:latest
@@ -54,72 +33,21 @@ services:
     volumes:
       - ./docker/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
-      - ./docker/exporters/mongodb_exporter:/exporters/mongodb_exporter
     ports:
       - "9090:9090"
-    environment:
-      - GRAFANA_CLOUD_URL=${GRAFANA_CLOUD_URL}
-      - GRAFANA_API_KEY=${GRAFANA_API_KEY}
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    depends_on:
-      - mongodb_exporter
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
-    volumes:
-      - ./docker/grafana:/etc/grafana
-      - grafana_data:/var/lib/grafana
     ports:
       - "3001:3000"
     depends_on:
       - prometheus
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-    restart: unless-stopped
-
-  mongodb_exporter:
-    image: bitnami/mongodb-exporter:latest
-    environment:
-      - MONGODB_URI=${MONGODB_URI}
-    ports:
-      - "9216:9216"
-
-  jenkins:
-    image: jenkins/jenkins:lts-jdk17
-    container_name: jenkins
-    user: root
-    privileged: true
-    ports:
-      - "8080:8080"
-      - "50000:50000"
-    environment:
-      - JENKINS_OPTS="--prefix=/jenkins"
-      - JAVA_OPTS="-Xmx2g -Djava.awt.headless=true"
-      - JENKINS_URL=http://jenkins:8080
-      - JENKINS_ADMIN_ID=${JENKINS_ADMIN_ID}
-      - JENKINS_ADMIN_PASSWORD=${JENKINS_ADMIN_PASSWORD}
+      - GF_AUTH_ANONYMOUS_ENABLED=false
     volumes:
-      - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./jenkins/casc.yml:/var/jenkins_home/casc.yml
-      - ./jenkins/plugins.txt:/usr/share/jenkins/ref/plugins.txt
-    networks:
-      - app_network
-    healthcheck:
-      test: curl -f http://localhost:8080/login || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
 
 volumes:
   prometheus_data:
-  grafana_data:
-  jenkins_home:
