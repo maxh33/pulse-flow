@@ -3,29 +3,41 @@ import { z } from 'zod';
 import { errorCounter } from '../monitoring/metrics';
 
 const envSchema = z.object({
-  APP_URL: z.string().url(),
-  HEALTH_CHECK_RETRIES: z.string().transform(Number).default('3'),
+  APP_URL: z.string().url().default('http://localhost:3000'),
+  HEALTH_CHECK_RETRIES: z.string().transform(Number).default('5'),
   HEALTH_CHECK_INTERVAL: z.string().transform(Number).default('5000')
 });
 
 async function verifyDeployment() {
   try {
+    console.log('Starting deployment verification...');
+    console.log('Environment variables:', {
+      APP_URL: process.env.APP_URL,
+      HEALTH_CHECK_RETRIES: process.env.HEALTH_CHECK_RETRIES,
+      HEALTH_CHECK_INTERVAL: process.env.HEALTH_CHECK_INTERVAL
+    });
+
     const env = envSchema.parse(process.env);
     const maxRetries = env.HEALTH_CHECK_RETRIES;
     let retries = 0;
 
     while (retries < maxRetries) {
       try {
+        console.log(`Attempt ${retries + 1}/${maxRetries} - Checking ${env.APP_URL}/healthz`);
         const response = await axios.get(`${env.APP_URL}/healthz`);
+        
         if (response.status === 200) {
           console.log('✅ Application health check passed');
           process.exit(0);
         }
       } catch (error) {
         retries++;
+        console.log(`Health check attempt ${retries} failed:`, (error as Error).message);
+        
         if (retries === maxRetries) {
           throw error;
         }
+        console.log(`Waiting ${env.HEALTH_CHECK_INTERVAL}ms before next attempt...`);
         await new Promise(resolve => setTimeout(resolve, env.HEALTH_CHECK_INTERVAL));
       }
     }

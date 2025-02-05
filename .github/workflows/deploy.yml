@@ -94,6 +94,10 @@ jobs:
 
       - name: Verify Deployment
         run: npm run verify:deployment
+        env:
+          APP_URL: "http://localhost:3000"
+          HEALTH_CHECK_RETRIES: "5"
+          HEALTH_CHECK_INTERVAL: "5000"
 
       - name: Cleanup on Failure
         if: failure()
