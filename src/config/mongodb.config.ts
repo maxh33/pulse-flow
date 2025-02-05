@@ -9,12 +9,12 @@ export const connectDB = async () => {
     }
 
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 30000,
+      serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      waitQueueTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      waitQueueTimeoutMS: 10000,
       maxPoolSize: 10,
       minPoolSize: 2,
-      heartbeatFrequencyMS: 10000,
       retryWrites: true,
       w: 'majority'
     });
@@ -26,10 +26,8 @@ export const connectDB = async () => {
     });
 
     mongoose.connection.on('disconnected', () => {
-      if (process.env.NODE_ENV !== 'test') {
-        console.warn('MongoDB Disconnected');
-        errorCounter.inc({ type: 'mongodb_disconnect' });
-      }
+      console.warn('MongoDB Disconnected');
+      errorCounter.inc({ type: 'mongodb_disconnect' });
     });
 
     return mongoose.connection;

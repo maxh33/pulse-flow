@@ -3,14 +3,12 @@ name: Deploy to Production
 on:
   push:
     branches:
-      - feat/jenkins
       - main
+      - feat/jenkins
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  JENKINS_ADMIN_ID: ${{ secrets.JENKINS_ADMIN_ID }}
-  JENKINS_ADMIN_PASSWORD: ${{ secrets.JENKINS_ADMIN_PASSWORD }}
 
 jobs:
   build-and-deploy:
@@ -27,17 +25,19 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Test MongoDB Connection
-        run: |
-          echo "Testing MongoDB connection..."
-          echo "MONGODB_URI is set: ${{ secrets.MONGODB_URI != '' }}"
-          npm run test:mongodb
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Verify MongoDB Connection
+        run: npm run verify:mongodb
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          NODE_ENV: production
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -73,7 +73,6 @@ jobs:
         run: |
           sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
 
       - name: Setup Network
         run: |
@@ -90,49 +89,21 @@ jobs:
           GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          JENKINS_ADMIN_ID: ${{ env.JENKINS_ADMIN_ID }}
-          JENKINS_ADMIN_PASSWORD: ${{ env.JENKINS_ADMIN_PASSWORD }}
+          JENKINS_ADMIN_ID: ${{ secrets.JENKINS_ADMIN_ID }}
+          JENKINS_ADMIN_PASSWORD: ${{ secrets.JENKINS_ADMIN_PASSWORD }}
+
+      - name: Verify Deployment
+        run: |
+          echo "Verifying deployment..."
+          npm run verify:deployment
+        env:
+          APP_URL: http://localhost:3000
+          HEALTH_CHECK_RETRIES: 5
+          HEALTH_CHECK_INTERVAL: 10000
+        timeout-minutes: 5
 
       - name: Cleanup on Failure
         if: failure()
         run: |
-          docker-compose -f docker-compose.prod.yml down
-          docker network rm pulse-flow_app_network || tru
-
-      - name: Wait for Jenkins
-        run: |
-          timeout 300 bash -c 'while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' localhost:8080)" != "200" ]]; do sleep 5; done' || false
-
-      - name: Configure Jenkins
-        run: |
-          # Get Jenkins CLI
-          wget http://localhost:8080/jnlpJars/jenkins-cli.jar
-
-          # Create Jenkins API token
-          curl -X POST \
-            -u "${JENKINS_ADMIN_ID}:${JENKINS_ADMIN_PASSWORD}" \
-            -H "Content-Type: application/json" \
-            --data '{"newTokenName": "github-actions"}' \
-            http://localhost:8080/me/descriptorByName/jenkins.security.ApiTokenProperty/generateNewToken
-
-          # Install suggested plugins
-          java -jar jenkins-cli.jar -s http://localhost:8080/ \
-            -auth ${JENKINS_ADMIN_ID}:${JENKINS_ADMIN_PASSWORD} \
-            install-plugin workflow-aggregator git github docker-workflow
-
-      - name: Create Jenkins Pipeline
-        run: |
-          java -jar jenkins-cli.jar -s http://localhost:8080/ \
-            -auth ${JENKINS_ADMIN_ID}:${JENKINS_ADMIN_PASSWORD} \
-            create-job pulse-flow-pipeline < jenkins/job.xml
-
-      - name: Verify Deployment
-        run: |
-          echo "Checking service status..."
-          docker-compose ps
-          
-          echo "Checking Jenkins..."
-          curl -f http://localhost:8080/login
-          
-          echo "Checking app..."
-          curl -f http://localhost:3000/healthz
+          docker-compose down --volumes --remove-orphans
+          docker network rm pulse-flow_app_network || true

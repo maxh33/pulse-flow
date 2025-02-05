@@ -8,6 +8,20 @@ pipeline {
     }
 
     stages {
+        stage('Verify MongoDB') {
+            steps {
+                script {
+                    try {
+                        sh 'npm run verify:mongodb'
+                    } catch (Exception e) {
+                        error "MongoDB verification failed: ${e.message}"
+                    }
+                }
+            }
+            environment {
+                NODE_ENV = 'production'
+            }
+        }
 
         stage('Setup Network') {
             steps {

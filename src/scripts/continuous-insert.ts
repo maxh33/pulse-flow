@@ -1,5 +1,5 @@
 import { connectDB } from '../config/mongodb.config';
-import Chance from 'chance';
+import { Chance } from 'chance';
 import { TweetService } from '../services/tweet.service';
 import { createTweetData } from '../factories/tweet.factory';
 import * as metrics from '../monitoring/metrics';
