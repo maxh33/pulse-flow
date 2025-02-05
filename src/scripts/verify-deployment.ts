@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { errorCounter } from '../monitoring/metrics';
 
 const envSchema = z.object({
-  APP_URL: z.string().url().default('http://localhost:3000'),
+  APP_URL: z.string().url().default('http://pulse-flow-app:3000'),
   HEALTH_CHECK_RETRIES: z.string().transform(Number).default('5'),
   HEALTH_CHECK_INTERVAL: z.string().transform(Number).default('5000')
 });
@@ -21,10 +21,16 @@ async function verifyDeployment() {
     const maxRetries = env.HEALTH_CHECK_RETRIES;
     let retries = 0;
 
+    // Create axios instance with custom configuration
+    const instance = axios.create({
+      timeout: 5000,
+      validateStatus: status => status === 200
+    });
+
     while (retries < maxRetries) {
       try {
         console.log(`Attempt ${retries + 1}/${maxRetries} - Checking ${env.APP_URL}/healthz`);
-        const response = await axios.get(`${env.APP_URL}/healthz`);
+        const response = await instance.get(`${env.APP_URL}/healthz`);
         
         if (response.status === 200) {
           console.log('✅ Application health check passed');
@@ -32,7 +38,7 @@ async function verifyDeployment() {
         }
       } catch (error) {
         retries++;
-        console.log(`Health check attempt ${retries} failed:`, (error as Error).message);
+        console.log(`Health check attempt ${retries} failed:`, error instanceof Error ? error.message : 'Unknown error');
         
         if (retries === maxRetries) {
           throw error;
