@@ -3,24 +3,25 @@ import { Express } from 'express';
 import { grafanaConfig } from '../config/grafana.config';
 import helmet from 'helmet';
 import { z } from 'zod';
+import axios from 'axios';
 
-// Setup Grafana metrics
-const metrics = new Registry();
-metrics.setDefaultLabels(grafanaConfig.metrics.defaultLabels);
+// Create and export the registry with proper typing
+export const register: Registry = new Registry();
+register.setDefaultLabels(grafanaConfig.metrics.defaultLabels);
 
 // Initialize default metrics
 client.collectDefaultMetrics({ 
-  register: metrics,
+  register: register,
   prefix: grafanaConfig.metrics.prefix,
   gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5]
 });
 
 // Tweet processing metrics
 export const tweetCounter = new Counter({
-  name: `${grafanaConfig.metrics.prefix}tweets_processed_total`,
-  help: 'Total number of processed tweets',
+  name: 'tweets_total',
+  help: 'Total number of tweets processed',
   labelNames: ['status'],
-  registers: [metrics]
+  registers: [register]
 });
 
 // Engagement metrics
@@ -28,35 +29,35 @@ export const engagementGauge = new Gauge({
   name: `${grafanaConfig.metrics.prefix}tweet_engagement`,
   help: 'Tweet engagement metrics',
   labelNames: ['type'],
-  registers: [metrics]
+  registers: [register]
 });
 
 // Error counter
 export const errorCounter = new Counter({
-  name: `${grafanaConfig.metrics.prefix}errors_total`,
+  name: 'errors_total',
   help: 'Total number of errors',
   labelNames: ['type'],
-  registers: [metrics]
+  registers: [register]
 });
 
 // Business metrics
 export const transactionVolume = new Gauge({
   name: `${grafanaConfig.metrics.prefix}transaction_volume`,
   help: 'Transaction volume',
-  registers: [metrics]
+  registers: [register]
 });
 
 export const responseTime = new Histogram({
   name: `${grafanaConfig.metrics.prefix}response_time`,
   help: 'Response time in seconds',
   buckets: [0.1, 0.5, 1, 2, 5],
-  registers: [metrics]
+  registers: [register]
 });
 
 export const errorRate = new Counter({
   name: `${grafanaConfig.metrics.prefix}error_rate`,
   help: 'Error rate',
-  registers: [metrics]
+  registers: [register]
 });
 
 // Request timeout and error handling
@@ -67,8 +68,8 @@ export const setupMetrics = async (app: Express) => {
   // Metrics endpoint with basic auth
   app.get(grafanaConfig.metrics.path, async (req, res) => {
     try {
-      res.set('Content-Type', metrics.contentType);
-      const metricsData = await metrics.metrics();
+      res.set('Content-Type', register.contentType);
+      const metricsData = await register.metrics();
       res.send(metricsData);
     } catch (error) {
       console.error('Metrics collection error:', error);
@@ -98,4 +99,23 @@ export const TweetSchema = z.object({
   platform: z.enum(['web', 'android', 'ios'])
 });
 
-export { metrics };
+// Push metrics to Grafana Cloud with proper typing
+export async function pushMetrics(): Promise<void> {
+  try {
+    const metricsData = await register.metrics();
+    
+    await axios.post(process.env.GRAFANA_CLOUD_URL!, metricsData, {
+      headers: {
+        'Content-Type': 'text/plain',
+        Authorization: `Bearer ${process.env.GRAFANA_API_KEY}`
+      }
+    });
+    
+    console.log('Metrics pushed successfully');
+  } catch (error) {
+    console.error('Failed to push metrics:', error);
+  }
+}
+
+// Setup periodic push (every 15 seconds)
+setInterval(pushMetrics, 15000);

@@ -1,0 +1,29 @@
+{
+  "dashboard": {
+    "title": "Tweet Metrics",
+    "panels": [
+      {
+        "title": "Tweet Rate",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(tweets_total[5m])",
+            "legendFormat": "Tweets per second"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(errors_total[5m])",
+            "legendFormat": "Errors per second"
+          }
+        ]
+      }
+    ]
+  }
+} 

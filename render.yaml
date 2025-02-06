@@ -2,12 +2,26 @@ services:
   - type: web
     name: pulse-flow
     env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: |
+      npm ci
+      npm run build
+    startCommand: node dist/index.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
         sync: false
+      - key: GRAFANA_CLOUD_URL
+        sync: false
+      - key: GRAFANA_API_KEY
+        sync: false
+      - key: PORT
+        value: 3000
     healthCheckPath: /healthz
     autoDeploy: true
+    buildFilter:
+      paths:
+        - src/**/*.ts
+        - package.json
+        - package-lock.json
+        - tsconfig.json
