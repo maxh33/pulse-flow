@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc",
+    "dev": "ts-node src/index.ts",
     "test": "jest",
     "test:mongodb": "jest src/tests/mongodb.test.ts --forceExit",
     "docker:prod": "docker-compose -f docker-compose.prod.yml up -d",

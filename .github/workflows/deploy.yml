@@ -95,14 +95,20 @@ jobs:
 
       - name: Verify Deployment
         run: |
-          # Check if container is running
-          if ! docker ps | grep pulse-flow-app; then
-            echo "Container pulse-flow-app is not running"
-            docker logs pulse-flow-app
+          # Check if container is running and get its status
+          CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' pulse-flow-app 2>/dev/null || echo "not_found")
+          
+          if [ "$CONTAINER_STATUS" != "running" ]; then
+            echo "Container pulse-flow-app is not running (status: $CONTAINER_STATUS)"
+            echo "Container logs:"
+            docker logs pulse-flow-app || true
+            echo "All running containers:"
+            docker ps
             exit 1
           fi
           
           # Check container logs
+          echo "Container logs:"
           docker logs pulse-flow-app
           
           # Try direct health check

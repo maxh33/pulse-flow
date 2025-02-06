@@ -23,11 +23,6 @@ WORKDIR /usr/src/app
 # Install MongoDB Shell and curl, then clean up
 RUN apt-get update && apt-get install -y \
     curl \
-    gnupg \
-    && curl -fsSL https://www.mongodb.org/static/pgp/server-6.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/mongodb-archive-keyring.gpg] http://repo.mongodb.org/apt/debian bullseye/mongodb-org/6.0 main" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list \
-    && apt-get update \
-    && apt-get install -y mongodb-mongosh \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -41,13 +36,13 @@ RUN npm ci --only=production
 COPY --from=builder /usr/src/app/dist ./dist
 
 # Add healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:3000/healthz || exit 1
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Explicitly use start command for production
+CMD ["npm", "run", "start"]
 
 # Development stage
 FROM node:18-slim AS development
