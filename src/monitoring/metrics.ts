@@ -187,14 +187,14 @@ export async function pushMetrics(): Promise<void> {
   try {
     const metricsData = await register.metrics();
     const baseUrl = process.env.GRAFANA_CLOUD_URL?.replace(/\/api\/prom$/, '');
-    // Use the correct endpoint
     const url = `${baseUrl}/api/prom/push`;
+
+    const auth = Buffer.from(`${process.env.GRAFANA_INSTANCE_ID}:${process.env.GRAFANA_API_TOKEN}`).toString('base64');
 
     await axios.post(url, metricsData, {
       headers: {
         'Content-Type': 'text/plain',
-        Authorization: `Bearer ${process.env.GRAFANA_API_KEY}`,
-        'X-Scope-OrgID': process.env.GRAFANA_ORG_ID || '1'
+        'Authorization': `Basic ${auth}`
       },
       timeout: 5000
     });
@@ -205,7 +205,7 @@ export async function pushMetrics(): Promise<void> {
       console.error('Failed to push metrics:', {
         status: error.response?.status,
         statusText: error.response?.statusText,
-        url: error.config?.url?.replace(process.env.GRAFANA_API_KEY || '', '[REDACTED]') // Hide API key in logs
+        url: error.config?.url?.replace(process.env.GRAFANA_API_TOKEN || '', '[REDACTED]')
       });
     } else {
       console.error('Failed to push metrics:', error);
