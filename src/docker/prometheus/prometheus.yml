@@ -1,5 +1,7 @@
 global:
   scrape_interval: 15s
+  external_labels:
+    monitor: 'pulse-flow'
 
 scrape_configs:
   - job_name: 'pulse-flow'
@@ -13,3 +15,7 @@ remote_write:
     basic_auth:
       username: "${GRAFANA_USERNAME}"
       password: "${GRAFANA_API_TOKEN}"
+    write_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'pulse_flow_.+'
+        action: keep
