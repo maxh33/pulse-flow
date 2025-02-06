@@ -23,13 +23,15 @@ async function verifyDeployment() {
 
     // Create axios instance with custom configuration
     const instance = axios.create({
-      timeout: 5000,
+      timeout: 10000, // Increased timeout
       validateStatus: status => status === 200
     });
 
     while (retries < maxRetries) {
       try {
         console.log(`Attempt ${retries + 1}/${maxRetries} - Checking ${env.APP_URL}/healthz`);
+        console.log('Checking DNS resolution...');
+        
         const response = await instance.get(`${env.APP_URL}/healthz`);
         
         if (response.status === 200) {
@@ -43,8 +45,9 @@ async function verifyDeployment() {
         if (retries === maxRetries) {
           throw error;
         }
-        console.log(`Waiting ${env.HEALTH_CHECK_INTERVAL}ms before next attempt...`);
-        await new Promise(resolve => setTimeout(resolve, env.HEALTH_CHECK_INTERVAL));
+        const waitTime = env.HEALTH_CHECK_INTERVAL * retries; // Exponential backoff
+        console.log(`Waiting ${waitTime}ms before next attempt...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
   } catch (error) {

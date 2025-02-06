@@ -91,11 +91,17 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Verify Deployment
-        run: npm run verify:deployment
-        env:
-          APP_URL: "http://pulse-flow-app:3000"
-          HEALTH_CHECK_RETRIES: "5"
-          HEALTH_CHECK_INTERVAL: "5000"
+        run: |
+          # Run verification inside a container that's connected to the network
+          docker run --rm \
+            --network pulse-flow_app_network \
+            -e APP_URL="http://pulse-flow-app:3000" \
+            -e HEALTH_CHECK_RETRIES="5" \
+            -e HEALTH_CHECK_INTERVAL="5000" \
+            -v $(pwd):/app \
+            -w /app \
+            node:18 \
+            npm run verify:deployment
 
       - name: Cleanup on Failure
         if: failure()

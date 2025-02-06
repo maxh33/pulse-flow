@@ -15,4 +15,3 @@ npm run insert-sample-tweets
 echo "Demo ready at:"
 echo "Application: http://localhost:3000"
 echo "Grafana: http://localhost:3001"
-echo "Jenkins: http://localhost:8080" 
