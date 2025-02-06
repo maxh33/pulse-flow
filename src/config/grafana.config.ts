@@ -20,6 +20,8 @@ export const grafanaConfig = {
     defaultLabels: {
       app: 'pulse-flow',
       environment: process.env.NODE_ENV || 'development'
-    }
+    },
+    pushInterval: 15000,
+    endpoint: '/api/prom/push'
   }
 };

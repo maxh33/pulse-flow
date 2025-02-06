@@ -15,6 +15,8 @@ services:
         sync: false
       - key: GRAFANA_API_KEY
         sync: false
+      - key: GRAFANA_ORG_ID
+        sync: false
       - key: PORT
         value: 3000
     healthCheckPath: /healthz

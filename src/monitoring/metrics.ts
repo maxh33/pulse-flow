@@ -103,19 +103,48 @@ export const TweetSchema = z.object({
 export async function pushMetrics(): Promise<void> {
   try {
     const metricsData = await register.metrics();
-    
-    await axios.post(process.env.GRAFANA_CLOUD_URL!, metricsData, {
+    const baseUrl = process.env.GRAFANA_CLOUD_URL?.replace(/\/$/, ''); // Remove trailing slash if present
+    const url = `${baseUrl}/api/v1/push`; // Changed to the correct endpoint
+
+    await axios.post(url, metricsData, {
       headers: {
         'Content-Type': 'text/plain',
-        Authorization: `Bearer ${process.env.GRAFANA_API_KEY}`
-      }
+        Authorization: `Bearer ${process.env.GRAFANA_API_KEY}`,
+        'X-Scope-OrgID': process.env.GRAFANA_ORG_ID || '1'
+      },
+      timeout: 5000, // Add timeout
+      validateStatus: (status) => status < 500
     });
     
     console.log('Metrics pushed successfully');
   } catch (error) {
-    console.error('Failed to push metrics:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Failed to push metrics:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url?.replace(process.env.GRAFANA_API_KEY || '', '[REDACTED]') // Hide API key in logs
+      });
+    } else {
+      console.error('Failed to push metrics:', error);
+    }
   }
 }
 
 // Setup periodic push (every 15 seconds)
 setInterval(pushMetrics, 15000);
+
+export async function startMetricsCollection(): Promise<() => void> {
+  const interval = setInterval(async () => {
+    try {
+      await pushMetrics();
+    } catch (error) {
+      console.error('Error pushing metrics:', error);
+    }
+  }, grafanaConfig.metrics.pushInterval);
+
+  // Return cleanup function
+  return () => {
+    clearInterval(interval);
+    console.log('Metrics collection stopped');
+  };
+}
