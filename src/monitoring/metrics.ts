@@ -79,6 +79,51 @@ export const errorRateMetric = new Counter({
   labelNames: ['type']
 });
 
+// Add these new metrics
+export const tweetProcessingTime = new Histogram({
+  name: `${grafanaConfig.metrics.prefix}tweet_processing_duration_seconds`,
+  help: 'Time spent processing tweets',
+  labelNames: ['status'],
+  buckets: [0.1, 0.5, 1, 2, 5]
+});
+
+export const tweetSentiment = new Counter({
+  name: `${grafanaConfig.metrics.prefix}tweet_sentiment_total`,
+  help: 'Distribution of tweet sentiments',
+  labelNames: ['sentiment']
+});
+
+export const tweetPlatform = new Counter({
+  name: `${grafanaConfig.metrics.prefix}tweet_platform_total`,
+  help: 'Distribution of tweet platforms',
+  labelNames: ['platform']
+});
+
+export const tweetMetrics = new Counter({
+  name: `${grafanaConfig.metrics.prefix}tweet_metrics_total`,
+  help: 'Tweet engagement metrics',
+  labelNames: ['type']
+});
+
+// Use these metrics in your tweet processing logic
+export const trackTweet = (tweet: any) => {
+  const start = Date.now();
+  
+  // Track sentiment
+  tweetSentiment.inc({ sentiment: tweet.sentiment });
+  
+  // Track platform
+  tweetPlatform.inc({ platform: tweet.platform });
+  
+  // Track metrics
+  tweetMetrics.inc({ type: 'likes' }, tweet.metrics.likes);
+  tweetMetrics.inc({ type: 'retweets' }, tweet.metrics.retweets);
+  tweetMetrics.inc({ type: 'comments' }, tweet.metrics.comments);
+  
+  // Track processing time
+  tweetProcessingTime.observe(Date.now() - start);
+};
+
 // Request timeout and error handling
 export const setupMetrics = async (app: Express) => {
   // Add basic security headers
