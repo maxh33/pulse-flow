@@ -192,34 +192,15 @@ export async function pushMetrics(): Promise<void> {
       throw new Error('GRAFANA_PUSH_URL is not defined');
     }
 
-    // Format the metrics data according to Prometheus remote write spec
-    const writeRequest = {
-      timeseries: [{
-        labels: [{
-          name: '__name__',
-          value: 'pulse_flow_metrics'
-        }],
-        samples: [{
-          timestamp: Date.now(),
-          value: metricsData
-        }]
-      }]
-    };
-
-    await axios.post(url, writeRequest, {
+    await axios.post(url, metricsData, {
       headers: {
-        'Content-Type': 'application/x-protobuf',
-        'X-Prometheus-Remote-Write-Version': '0.1.0'
+        'Content-Type': register.contentType
       },
       auth: {
         username: process.env.GRAFANA_USERNAME || '',
         password: process.env.GRAFANA_API_TOKEN || ''
       },
-      timeout: 5000,
-      transformRequest: [(data) => {
-        // Convert to protobuf format
-        return Buffer.from(JSON.stringify(data)).toString('base64');
-      }]
+      timeout: 5000
     });
     
     console.log('Metrics pushed successfully');
