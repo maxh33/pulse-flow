@@ -28,6 +28,8 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 let server: any;
 
+const SHUTDOWN_TIMEOUT = 30000; // Increase to 30 seconds
+
 async function startServer() {
   try {
     // Connect to MongoDB
@@ -51,21 +53,32 @@ async function startServer() {
         await stopMetrics();
       }
 
-      // Close server
-      server.close(() => {
-        console.log('HTTP server closed');
-        process.exit(0);
+      // Close server with timeout
+      const serverClosed = new Promise((resolve) => {
+        server.close(() => {
+          console.log('HTTP server closed');
+          resolve(true);
+        });
       });
 
-      // Force close after 10s
-      setTimeout(() => {
-        console.error('Could not close connections in time, forcefully shutting down');
+      try {
+        await Promise.race([
+          serverClosed,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Server close timed out')), SHUTDOWN_TIMEOUT)
+          )
+        ]);
+        process.exit(0);
+      } catch (error) {
+        console.error('Shutdown error:', error);
         process.exit(1);
-      }, 10000);
+      }
     };
 
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
+    // Handle shutdown signals
+    ['SIGTERM', 'SIGINT'].forEach(signal => {
+      process.on(signal, () => shutdown(signal));
+    });
 
   } catch (error) {
     console.error('Failed to start server:', error);

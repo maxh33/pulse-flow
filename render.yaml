@@ -20,7 +20,9 @@ services:
       - key: PORT
         value: 3000
     healthCheckPath: /healthz
+    healthCheckTimeout: 5
     autoDeploy: true
+    numInstances: 1
     buildFilter:
       paths:
         - src/**/*.ts

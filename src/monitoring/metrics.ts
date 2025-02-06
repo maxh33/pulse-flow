@@ -60,6 +60,25 @@ export const errorRate = new Counter({
   registers: [register]
 });
 
+// Add these metrics
+export const responseTimeMetric = new Histogram({
+  name: 'pulse_flow_response_time',
+  help: 'Response time in seconds',
+  labelNames: ['method', 'route'],
+  buckets: [0.1, 0.5, 1, 2, 5]
+});
+
+export const heapSizeMetric = new Gauge({
+  name: 'pulse_flow_nodejs_heap_size_used_bytes',
+  help: 'Process heap size in bytes',
+});
+
+export const errorRateMetric = new Counter({
+  name: 'pulse_flow_error_rate_total',
+  help: 'Total number of errors',
+  labelNames: ['type']
+});
+
 // Request timeout and error handling
 export const setupMetrics = async (app: Express) => {
   // Add basic security headers
@@ -76,6 +95,25 @@ export const setupMetrics = async (app: Express) => {
       errorCounter.inc({ type: 'metrics_collection' });
       res.status(500).send('Error collecting metrics');
     }
+  });
+
+  // Track heap size
+  setInterval(() => {
+    const used = process.memoryUsage().heapUsed;
+    heapSizeMetric.set(used);
+  }, 5000);
+
+  // Track response times
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      responseTimeMetric.observe({ 
+        method: req.method, 
+        route: req.route?.path || 'unknown' 
+      }, duration / 1000); // Convert to seconds
+    });
+    next();
   });
 };
 
@@ -140,7 +178,7 @@ export async function startMetricsCollection(): Promise<() => void> {
     } catch (error) {
       console.error('Error pushing metrics:', error);
     }
-  }, grafanaConfig.metrics.pushInterval);
+  }, parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'));
 
   // Return cleanup function
   return () => {

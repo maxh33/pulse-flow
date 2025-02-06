@@ -1,0 +1,59 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Basic Application Metrics",
+    "tags": ["nodejs", "application"],
+    "timezone": "browser",
+    "refresh": "10s",
+    "panels": [
+      {
+        "title": "Response Time",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "rate(pulse_flow_response_time_sum[5m]) / rate(pulse_flow_response_time_count[5m])",
+            "legendFormat": "Average Response Time"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "rate(pulse_flow_error_rate_total[5m])",
+            "legendFormat": "Errors per second"
+          }
+        ]
+      },
+      {
+        "title": "Memory Usage",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "pulse_flow_nodejs_heap_size_used_bytes",
+            "legendFormat": "Heap Used"
+          }
+        ]
+      }
+    ]
+  }
+} 
