@@ -192,24 +192,9 @@ export async function pushMetrics(): Promise<void> {
       throw new Error('GRAFANA_PUSH_URL is not defined');
     }
 
-    // Format metrics data according to Prometheus remote_write API
-    const writeRequest = {
-      timeseries: [{
-        labels: [{
-          name: '__name__',
-          value: 'pulse_flow'
-        }],
-        samples: [{
-          timestamp: Date.now(),
-          value: metricsData
-        }]
-      }]
-    };
-
-    await axios.post(url, writeRequest, {
+    await axios.post(url, metricsData, {
       headers: {
-        'Content-Type': 'application/json',
-        'X-Prometheus-Remote-Write-Version': '0.1.0'
+        'Content-Type': register.contentType
       },
       auth: {
         username: process.env.GRAFANA_USERNAME || '',
@@ -225,7 +210,7 @@ export async function pushMetrics(): Promise<void> {
         status: error.response?.status,
         statusText: error.response?.statusText,
         url: error.config?.url,
-        data: error.response?.data // To see more error details
+        data: error.response?.data
       });
     } else {
       console.error('Failed to push metrics:', error);
