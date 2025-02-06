@@ -9,7 +9,7 @@ scrape_configs:
     scheme: 'http'
 
 remote_write:
-  - url: "https://prometheus-prod-40-prod-sa-east-1.grafana.net/api/prom/push"
+  - url: "${GRAFANA_PUSH_URL}"
     basic_auth:
-      username: "${GRAFANA_INSTANCE_ID}"
+      username: "${GRAFANA_USERNAME}"
       password: "${GRAFANA_API_TOKEN}"

@@ -186,15 +186,19 @@ export const TweetSchema = z.object({
 export async function pushMetrics(): Promise<void> {
   try {
     const metricsData = await register.metrics();
-    const baseUrl = process.env.GRAFANA_CLOUD_URL?.replace(/\/api\/prom$/, '');
-    const url = `${baseUrl}/api/prom/push`;
+    const url = process.env.GRAFANA_PUSH_URL;
 
-    const auth = Buffer.from(`${process.env.GRAFANA_INSTANCE_ID}:${process.env.GRAFANA_API_TOKEN}`).toString('base64');
+    if (!url) {
+      throw new Error('GRAFANA_PUSH_URL is not defined');
+    }
 
     await axios.post(url, metricsData, {
       headers: {
-        'Content-Type': 'text/plain',
-        'Authorization': `Basic ${auth}`
+        'Content-Type': 'text/plain'
+      },
+      auth: {
+        username: process.env.GRAFANA_USERNAME || '',
+        password: process.env.GRAFANA_API_TOKEN || ''
       },
       timeout: 5000
     });
@@ -205,7 +209,7 @@ export async function pushMetrics(): Promise<void> {
       console.error('Failed to push metrics:', {
         status: error.response?.status,
         statusText: error.response?.statusText,
-        url: error.config?.url?.replace(process.env.GRAFANA_API_TOKEN || '', '[REDACTED]')
+        url: error.config?.url
       });
     } else {
       console.error('Failed to push metrics:', error);

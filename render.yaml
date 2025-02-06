@@ -11,11 +11,13 @@ services:
         value: production
       - key: MONGODB_URI
         sync: false
-      - key: GRAFANA_CLOUD_URL
+      - key: GRAFANA_PROMETHEUS_URL
         sync: false
-      - key: GRAFANA_API_KEY
+      - key: GRAFANA_PUSH_URL
         sync: false
-      - key: GRAFANA_ORG_ID
+      - key: GRAFANA_USERNAME
+        sync: false
+      - key: GRAFANA_API_TOKEN
         sync: false
       - key: PORT
         value: 3000
