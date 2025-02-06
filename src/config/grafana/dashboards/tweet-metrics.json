@@ -11,7 +11,7 @@
         "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
         "targets": [
           {
-            "expr": "rate(pulse_flow_tweet_processing_duration_seconds_count[5m])",
+            "expr": "sum(rate(pulse_flow_tweet_processing_duration_seconds_count[5m]))",
             "legendFormat": "Tweets processed per second"
           }
         ]
@@ -22,7 +22,7 @@
         "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
         "targets": [
           {
-            "expr": "rate(pulse_flow_tweet_processing_duration_seconds_sum[5m]) / rate(pulse_flow_tweet_processing_duration_seconds_count[5m])",
+            "expr": "sum(rate(pulse_flow_tweet_processing_duration_seconds_sum[5m])) / sum(rate(pulse_flow_tweet_processing_duration_seconds_count[5m]))",
             "legendFormat": "Average processing time"
           }
         ]

@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { connectDB } from './config/mongodb.config';
-import { setupMetrics, startMetricsCollection } from './monitoring/metrics';
+import { setupMetrics, startMetricsCollection, pushMetrics } from './monitoring/metrics';
 import { healthRoutes } from './routes/health.routes';
 import { pingRoutes } from './routes/ping.routes';
 import { errorHandler } from './middleware/errorHandler';
@@ -27,8 +27,7 @@ app.use(errorHandler);
 // Start server
 const PORT = process.env.PORT || 3000;
 let server: any;
-
-const SHUTDOWN_TIMEOUT = 30000; // Increase to 30 seconds
+let metricsInterval: NodeJS.Timeout;
 
 async function startServer() {
   try {
@@ -42,46 +41,39 @@ async function startServer() {
     });
 
     // Start metrics collection
-    const stopMetrics = await startMetricsCollection();
+    metricsInterval = setInterval(async () => {
+      try {
+        await pushMetrics();
+      } catch (error) {
+        console.error('Metrics push failed:', error);
+      }
+    }, parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'));
 
-    // Graceful shutdown handling
+    // Graceful shutdown
     const shutdown = async (signal: string) => {
       console.log(`${signal} received. Starting graceful shutdown...`);
       
-      // Stop metrics collection first
-      if (stopMetrics) {
-        await stopMetrics();
-      }
-
-      // Close server with timeout
-      const serverClosed = new Promise((resolve) => {
-        server.close(() => {
-          console.log('HTTP server closed');
-          resolve(true);
-        });
+      // Clear metrics interval
+      clearInterval(metricsInterval);
+      
+      // Close server
+      server.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
       });
 
-      try {
-        await Promise.race([
-          serverClosed,
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Server close timed out')), SHUTDOWN_TIMEOUT)
-          )
-        ]);
-        process.exit(0);
-      } catch (error) {
-        console.error('Shutdown error:', error);
+      // Force close after timeout
+      setTimeout(() => {
+        console.error('Could not close connections in time, forcefully shutting down');
         process.exit(1);
-      }
+      }, 10000);
     };
 
-    // Handle shutdown signals
-    ['SIGTERM', 'SIGINT'].forEach(signal => {
-      process.on(signal, () => shutdown(signal));
-    });
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('Server startup failed:', error);
     process.exit(1);
   }
 }

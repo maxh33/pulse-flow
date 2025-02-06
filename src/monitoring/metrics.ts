@@ -186,8 +186,9 @@ export const TweetSchema = z.object({
 export async function pushMetrics(): Promise<void> {
   try {
     const metricsData = await register.metrics();
-    const baseUrl = process.env.GRAFANA_CLOUD_URL?.replace(/\/$/, ''); // Remove trailing slash if present
-    const url = `${baseUrl}/api/v1/push`; // Changed to the correct endpoint
+    const baseUrl = process.env.GRAFANA_CLOUD_URL?.replace(/\/api\/prom$/, '');
+    // Use the correct endpoint
+    const url = `${baseUrl}/api/prom/push`;
 
     await axios.post(url, metricsData, {
       headers: {
@@ -195,8 +196,7 @@ export async function pushMetrics(): Promise<void> {
         Authorization: `Bearer ${process.env.GRAFANA_API_KEY}`,
         'X-Scope-OrgID': process.env.GRAFANA_ORG_ID || '1'
       },
-      timeout: 5000, // Add timeout
-      validateStatus: (status) => status < 500
+      timeout: 5000
     });
     
     console.log('Metrics pushed successfully');
