@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - feat/jenkins
+      - chore/simplify-project-architecture
 
 env:
   REGISTRY: ghcr.io
@@ -89,8 +89,6 @@ jobs:
           GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          JENKINS_ADMIN_ID: ${{ secrets.JENKINS_ADMIN_ID }}
-          JENKINS_ADMIN_PASSWORD: ${{ secrets.JENKINS_ADMIN_PASSWORD }}
 
       - name: Verify Deployment
         run: npm run verify:deployment
