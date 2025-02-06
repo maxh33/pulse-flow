@@ -90,18 +90,33 @@ jobs:
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
+      - name: Wait for app to start
+        run: sleep 30  # Give containers time to fully start
+
       - name: Verify Deployment
         run: |
-          # Run verification inside a container that's connected to the network
-          docker run --rm \
-            --network pulse-flow_app_network \
-            -e APP_URL="http://pulse-flow-app:3000" \
-            -e HEALTH_CHECK_RETRIES="5" \
-            -e HEALTH_CHECK_INTERVAL="5000" \
-            -v $(pwd):/app \
-            -w /app \
-            node:18 \
-            npm run verify:deployment
+          # Check if container is running
+          if ! docker ps | grep pulse-flow-app; then
+            echo "Container pulse-flow-app is not running"
+            docker logs pulse-flow-app
+            exit 1
+          fi
+          
+          # Check container logs
+          docker logs pulse-flow-app
+          
+          # Try direct health check
+          for i in {1..5}; do
+            if curl -f http://localhost:3000/healthz; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, waiting..."
+            sleep 10
+          done
+          
+          echo "Health check failed after 5 attempts"
+          exit 1
 
       - name: Cleanup on Failure
         if: failure()
