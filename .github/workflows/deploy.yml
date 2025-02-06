@@ -3,8 +3,8 @@ name: Deploy to Production
 on:
   push:
     branches:
-      - feat/cloud-deployment
       - main
+      - chore/simplify-project-architecture
 
 env:
   REGISTRY: ghcr.io
@@ -25,17 +25,19 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Test MongoDB Connection
-        run: |
-          echo "Testing MongoDB connection..."
-          echo "MONGODB_URI is set: ${{ secrets.MONGODB_URI != '' }}"
-          npm run test:mongodb
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Verify MongoDB Connection
+        run: npm run verify:mongodb
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          NODE_ENV: production
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -53,11 +55,6 @@ jobs:
           PORT=3000
           NODE_ENV=production
           MONGODB_URI=${{ secrets.MONGODB_URI }}
-          KAFKA_CLIENT_CERT=$(echo '${{ secrets.KAFKA_CLIENT_CERT_BASE64 }}' | base64 --decode)
-          KAFKA_CLIENT_CERT_KEY=$(echo '${{ secrets.KAFKA_CLIENT_CERT_KEY_BASE64 }}' | base64 --decode)
-          KAFKA_TRUSTED_CERT=$(echo '${{ secrets.KAFKA_TRUSTED_CERT_BASE64 }}' | base64 --decode)
-          KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }}
-          KAFKA_PREFIX=${{ secrets.KAFKA_PREFIX }}
           GRAFANA_CLOUD_URL=${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY=${{ secrets.GRAFANA_API_KEY }}
           EOL
@@ -76,18 +73,59 @@ jobs:
         run: |
           sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
 
-
-      - name: Deploy with Docker Compose
+      - name: Setup and Deploy
         run: |
-          docker-compose -f docker-compose.prod.yml up -d
+          # Clean up existing deployment first
+          bash scripts/cleanup.sh
+          
+          # Initialize network with proper labels
+          bash scripts/init-network.sh
+          
+          # Deploy with proper project name
+          COMPOSE_PROJECT_NAME=pulse-flow docker-compose -f docker-compose.prod.yml up -d
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          KAFKA_BROKERS: ${{ secrets.KAFKA_BROKERS }}
-          KAFKA_CLIENT_CERT: ${{ secrets.KAFKA_CLIENT_CERT }}
-          KAFKA_CLIENT_CERT_KEY: ${{ secrets.KAFKA_CLIENT_CERT_KEY }}
-          KAFKA_TRUSTED_CERT: ${{ secrets.KAFKA_TRUSTED_CERT }}
-          KAFKA_PREFIX: ${{ secrets.KAFKA_PREFIX }}
           GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Wait for app to start
+        run: sleep 30  # Give containers time to fully start
+
+      - name: Verify Deployment
+        run: |
+          # Check if container is running and get its status
+          CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' pulse-flow-app 2>/dev/null || echo "not_found")
+          
+          if [ "$CONTAINER_STATUS" != "running" ]; then
+            echo "Container pulse-flow-app is not running (status: $CONTAINER_STATUS)"
+            echo "Container logs:"
+            docker logs pulse-flow-app || true
+            echo "All running containers:"
+            docker ps
+            exit 1
+          fi
+          
+          # Check container logs
+          echo "Container logs:"
+          docker logs pulse-flow-app
+          
+          # Try direct health check
+          for i in {1..5}; do
+            if curl -f http://localhost:3000/healthz; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, waiting..."
+            sleep 10
+          done
+          
+          echo "Health check failed after 5 attempts"
+          exit 1
+
+      - name: Cleanup on Failure
+        if: failure()
+        run: |
+          docker-compose -f docker-compose.prod.yml down --volumes --remove-orphans || true
+          docker network rm pulse-flow_app_network || true

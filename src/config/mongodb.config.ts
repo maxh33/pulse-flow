@@ -9,21 +9,17 @@ export const connectDB = async () => {
     }
 
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 30000,
+      serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      waitQueueTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      waitQueueTimeoutMS: 10000,
       maxPoolSize: 10,
       minPoolSize: 2,
-      heartbeatFrequencyMS: 10000,
       retryWrites: true,
       w: 'majority'
     });
 
     // Add connection monitoring
-    mongoose.connection.on('connected', () => {
-      console.log('MongoDB Connected Successfully');
-    });
-
     mongoose.connection.on('error', (err) => {
       console.error('MongoDB Connection Error:', err);
       errorCounter.inc({ type: 'mongodb_connection' });
@@ -34,9 +30,10 @@ export const connectDB = async () => {
       errorCounter.inc({ type: 'mongodb_disconnect' });
     });
 
+    return mongoose.connection;
   } catch (error) {
     console.error('MongoDB connection error:', error);
     errorCounter.inc({ type: 'mongodb_initial_connection' });
-    process.exit(1);
+    throw error; // Don't exit process, let caller handle it
   }
 };

@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { TweetData } from '../models/tweet';
-import Chance from 'chance';
+import { Chance } from 'chance';
 
 const chance = new Chance();
 

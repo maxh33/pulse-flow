@@ -1,80 +1,82 @@
-version: '3.8'
+name: pulse-flow
+
+networks:
+  app_network:
+    external: true
+    name: pulse-flow_app_network
+    driver: bridge
+    labels:
+      com.docker.compose.network: "app_network"
+      com.docker.compose.project: "pulse-flow"
 
 services:
   app:
-    image: ghcr.io/${GITHUB_REPOSITORY}:latest
+    networks:
+      - app_network
+    container_name: pulse-flow-app
+    image: ghcr.io/${GITHUB_REPOSITORY:-pulse-flow}:latest
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
     environment:
       - NODE_ENV=production
-      - PORT=${PORT:-3000}
+      - PORT=3000
       - MONGODB_URI=${MONGODB_URI}
-      - KAFKA_BROKERS=${KAFKA_BROKERS}
-      - KAFKA_CLIENT_CERT=${KAFKA_CLIENT_CERT}
-      - KAFKA_CLIENT_CERT_KEY=${KAFKA_CLIENT_CERT_KEY}
-      - KAFKA_TRUSTED_CERT=${KAFKA_TRUSTED_CERT}
-      - KAFKA_PREFIX=${KAFKA_PREFIX}
-      - GRAFANA_CLOUD_URL=${GRAFANA_CLOUD_URL}
-      - GRAFANA_API_KEY=${GRAFANA_API_KEY}
-    ports:
-      - "${PORT:-3000}:3000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
-
-  continuous-insert:
-    build: .
-    command: node dist/scripts/continuous-insert.js
-    depends_on:
-      - app
-    environment:
-      - MONGODB_URI=${MONGODB_URI}
-      - KAFKA_BROKERS=${KAFKA_BROKERS}
-      - KAFKA_CLIENT_CERT=${KAFKA_CLIENT_CERT}
-      - KAFKA_CLIENT_CERT_KEY=${KAFKA_CLIENT_CERT_KEY}
-      - KAFKA_TRUSTED_CERT=${KAFKA_TRUSTED_CERT}
-      - KAFKA_PREFIX=${KAFKA_PREFIX}
-    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   prometheus:
+    networks:
+      - app_network
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
-      - ./docker/prometheus:/etc/prometheus
+      - ./docker/prometheus:/etc/prometheus:ro
       - prometheus_data:/prometheus
-      - ./docker/exporters/mongodb_exporter:/exporters/mongodb_exporter
-      - ./docker/exporters/kafka_exporter:/exporters/kafka_exporter
     ports:
-      - "9090:9090"
-    environment:
-      - GRAFANA_CLOUD_URL=${GRAFANA_CLOUD_URL}
-      - GRAFANA_API_KEY=${GRAFANA_API_KEY}
+      - "127.0.0.1:9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   grafana:
+    networks:
+      - app_network
     image: grafana/grafana:latest
     container_name: grafana
-    volumes:
-      - ./docker/grafana:/etc/grafana
-      - grafana_data:/var/lib/grafana
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
     depends_on:
       - prometheus
-  
-  mongodb_exporter:
-    image: bitnami/mongodb-exporter:latest
     environment:
-      - MONGODB_URI=${MONGODB_URI}
-    ports:
-      - "9216:9216"
-
-  kafka_exporter:
-    image: danielqsj/kafka-exporter:latest
-    environment:
-      - KAFKA_SERVER=${KAFKA_BROKERS}
-    ports:
-      - "9308:9308"
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   prometheus_data:
-  grafana_data:

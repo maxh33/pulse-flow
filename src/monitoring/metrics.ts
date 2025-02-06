@@ -1,6 +1,8 @@
-import client, { Counter, Registry, Gauge } from 'prom-client';
+import client, { Counter, Registry, Gauge, Histogram } from 'prom-client';
 import { Express } from 'express';
 import { grafanaConfig } from '../config/grafana.config';
+import helmet from 'helmet';
+import { z } from 'zod';
 
 // Setup Grafana metrics
 const metrics = new Registry();
@@ -37,16 +39,32 @@ export const errorCounter = new Counter({
   registers: [metrics]
 });
 
-// Kafka metrics
-export const kafkaPublishCounter = new Counter({
-  name: `${grafanaConfig.metrics.prefix}kafka_publishes_total`,
-  help: 'Total number of successful Kafka publishes',
-  labelNames: ['topic'],
+// Business metrics
+export const transactionVolume = new Gauge({
+  name: `${grafanaConfig.metrics.prefix}transaction_volume`,
+  help: 'Transaction volume',
+  registers: [metrics]
+});
+
+export const responseTime = new Histogram({
+  name: `${grafanaConfig.metrics.prefix}response_time`,
+  help: 'Response time in seconds',
+  buckets: [0.1, 0.5, 1, 2, 5],
+  registers: [metrics]
+});
+
+export const errorRate = new Counter({
+  name: `${grafanaConfig.metrics.prefix}error_rate`,
+  help: 'Error rate',
   registers: [metrics]
 });
 
 // Request timeout and error handling
-export const setupMetrics = (app: Express) => {
+export const setupMetrics = async (app: Express) => {
+  // Add basic security headers
+  app.use(helmet());
+
+  // Metrics endpoint with basic auth
   app.get(grafanaConfig.metrics.path, async (req, res) => {
     try {
       res.set('Content-Type', metrics.contentType);
@@ -59,5 +77,25 @@ export const setupMetrics = (app: Express) => {
     }
   });
 };
+
+// Environment validation schema
+export const EnvSchema = z.object({
+  MONGODB_URI: z.string().url(),
+  NODE_ENV: z.enum(['development', 'production']),
+  API_KEY: z.string().min(32)
+});
+
+// Tweet validation schema
+export const TweetSchema = z.object({
+  content: z.string().max(280),
+  user: z.string(),
+  metrics: z.object({
+    retweets: z.number().min(0),
+    likes: z.number().min(0),
+    comments: z.number().min(0)
+  }),
+  sentiment: z.enum(['positive', 'neutral', 'negative']),
+  platform: z.enum(['web', 'android', 'ios'])
+});
 
 export { metrics };

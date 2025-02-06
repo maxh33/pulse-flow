@@ -3,14 +3,15 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
     "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts",
     "build": "tsc",
-    "test:watch": "jest --watch",
-    "test:kafka": "jest src/tests/kafka.test.ts",
-    "insert-sample-tweets": "ts-node src/scripts/insert-sample-tweets.ts",
-    "test:mongodb": "jest src/tests/mongodb.test.ts"
+    "dev": "ts-node src/index.ts",
+    "test": "jest",
+    "test:mongodb": "jest src/tests/mongodb.test.ts --forceExit",
+    "docker:prod": "docker-compose -f docker-compose.prod.yml up -d",
+    "docker:build": "docker-compose -f docker-compose.prod.yml build",
+    "verify:mongodb": "ts-node src/scripts/verify-mongodb.ts",
+    "verify:deployment": "ts-node src/scripts/verify-deployment.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,38 +20,25 @@
   "dependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.10",
-    "chance": "^1.1.12",
+    "@types/cors": "^2.8.17",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^7.1.5",
     "helmet": "^8.0.0",
-    "hot-shots": "^10.2.1",
-    "kafkajs": "^2.2.4",
     "mongodb": "^6.13.0",
     "mongoose": "^8.9.5",
-    "opossum": "^8.4.0",
     "prom-client": "^14.2.0",
-    "prometheus-api-metrics": "^3.2.2",
-    "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
-    "uuid": "^11.0.5",
-    "winston": "^3.17.0"
+    "zod": "^3.24.1",
+    "axios": "^1.6.2",
+    "@types/axios": "^0.14.0",
+    "chance": "^1.1.11",
+    "@types/chance": "^1.1.6"
   },
   "devDependencies": {
-    "@eslint/js": "^9.19.0",
-    "@types/chance": "^1.1.6",
-    "@types/cors": "^2.8.17",
-    "@types/faker": "^6.6.8",
     "@types/jest": "^29.5.14",
-    "@types/opossum": "^8.1.8",
-    "@types/uuid": "^10.0.0",
-    "eslint": "^9.19.0",
-    "globals": "^15.14.0",
     "jest": "^29.7.0",
-    "nodemon": "^3.1.9",
-    "ts-jest": "^29.2.5",
-    "ts-node": "^10.0.0",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.22.0"
+    "ts-jest": "^29.2.5"
   }
 }

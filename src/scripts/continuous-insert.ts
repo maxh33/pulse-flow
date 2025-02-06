@@ -1,221 +1,63 @@
 import { connectDB } from '../config/mongodb.config';
-import { ObjectId } from 'mongodb';
-import Chance from 'chance';
+import { Chance } from 'chance';
 import { TweetService } from '../services/tweet.service';
 import { createTweetData } from '../factories/tweet.factory';
 import * as metrics from '../monitoring/metrics';
 
 const chance = new Chance();
+const tweetService = new TweetService();
 
-// Define continuousInsert function directly in the test file to avoid circular import
-const continuousInsert = async () => {
-  let isRunning = true;
+export const continuousInsert = async (options?: { maxIterations?: number }) => {
+  const maxIterations = options?.maxIterations ?? Infinity;
+  let iterationCount = 0;
 
-  const handleShutdown = async (signal: string) => {
-    console.log(`Received ${signal}. Gracefully shutting down...`);
-    await TweetService.disconnect();
-    process.exit(0);
-  };
+  try {
+    await connectDB();
+    console.log('Connected to MongoDB - Starting continuous insert...');
 
-  process.on('SIGINT', () => handleShutdown('SIGINT'));
-  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+    const handleShutdown = async (signal: string) => {
+      console.log(`Received ${signal}. Gracefully shutting down...`);
+      await tweetService.disconnect();
+      process.exit(0);
+    };
 
-  while (isRunning) {
-    try {
-      const tweetData = createTweetData();
-      await TweetService.createTweet(tweetData);
-      console.log({
-        timestamp: new Date().toISOString(),
-        insertCount: 1,
-        tweetId: tweetData.tweetId,
-        user: tweetData.user,
-        sentiment: tweetData.sentiment,
-        engagement: tweetData.metrics,
-        nextInsertDelay: chance.integer({ min: 1000, max: 3000 })
-      });
-    } catch (error) {
-      console.error('Insert failed:', error);
-      metrics.errorCounter.inc({ type: 'continuous_insert' });
-      await new Promise(resolve => setTimeout(resolve, 5000));
+    process.on('SIGINT', () => handleShutdown('SIGINT'));
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+
+    while (iterationCount < maxIterations) {
+      try {
+        const tweetData = createTweetData();
+        const tweet = await tweetService.createTweet(tweetData);
+        
+        metrics.tweetCounter.inc({ status: 'created' });
+        iterationCount++;
+
+        console.log({
+          timestamp: new Date().toISOString(),
+          insertCount: iterationCount,
+          tweetId: tweet.tweetId,
+          user: tweet.user,
+          sentiment: tweet.sentiment,
+          engagement: tweet.metrics
+        });
+
+        // Dynamic delay based on hour
+        const currentHour = new Date().getHours();
+        const delay = currentHour >= 9 && currentHour <= 17
+          ? chance.integer({ min: 1000, max: 3000 })  // Business hours
+          : chance.integer({ min: 5000, max: 10000 }); // Off hours
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+      } catch (error) {
+        console.error('Insert failed:', error);
+        metrics.errorCounter.inc({ type: 'continuous_insert' });
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
     }
-
-    const currentHour = new Date().getHours();
-    const delay = currentHour >= 9 && currentHour <= 17
-      ? chance.integer({ min: 1000, max: 3000 })
-      : chance.integer({ min: 5000, max: 10000 });
-
-    await new Promise(resolve => setTimeout(resolve, delay));
+  } catch (error) {
+    console.error('Failed to start continuous insert:', error);
+    metrics.errorCounter.inc({ type: 'continuous_insert_startup' });
+    process.exit(1);
   }
 };
-import { TweetDocument } from '../models/tweet';
-
-jest.mock('../config/mongodb.config');
-jest.mock('chance');
-jest.mock('../services/tweet.service');
-jest.mock('../factories/tweet.factory');
-jest.mock('../monitoring/metrics');
-
-describe('continuousInsert', () => {
-  let tweetServiceMock: jest.Mocked<TweetService>;
-  let consoleSpy: jest.SpyInstance;
-  let processExitSpy: jest.SpyInstance;
-  
-  const mockTweet: TweetDocument = {
-    tweetId: 'testTweetId',
-    user: 'testUser',
-    content: 'testContent',
-    timestamp: new Date(),
-    metrics: {
-      retweets: 0,
-      likes: 0,
-      comments: 0,
-    },
-    sentiment: 'neutral',
-    location: {
-      country: 'testCountry',
-      city: 'testCity',
-    },
-    platform: 'web',
-    tags: [],
-    _id: new ObjectId(),
-    __v: 0,
-    $assertPopulated: jest.fn(),
-    $clearModifiedPaths: jest.fn(),
-    $createModifiedPathsSnapshot: jest.fn(),
-    $clone: jest.fn(),
-    $getAllSubdocs: jest.fn(),
-    $ignore: jest.fn(),
-    $isDefault: jest.fn(),
-    // Add other missing properties as needed
-  };
-
-  beforeAll(() => {
-    // Mock console methods
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
-    
-    // Mock process.exit
-    processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-    
-    // Mock chance
-    (chance.integer as jest.Mock).mockReturnValue(1000);
-    
-    // Mock DB connection
-    (connectDB as jest.Mock).mockResolvedValue(undefined);
-    
-    // Mock TweetService
-    tweetServiceMock = {
-      createTweet: jest.fn(),
-      disconnect: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<TweetService>;
-    (TweetService as unknown as jest.Mock).mockImplementation(() => tweetServiceMock);
-    
-    // Mock tweet factory
-    (createTweetData as jest.Mock).mockReturnValue(mockTweet);
-  });
-
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
-    jest.useRealTimers();
-  });
-
-  afterAll(() => {
-    consoleSpy.mockRestore();
-    processExitSpy.mockRestore();
-  });
-
-  it('should insert tweets with dynamic delays based on hour', async () => {
-    // Mock different hours
-    const peakHour = new Date();
-    peakHour.setHours(12);
-    const offPeakHour = new Date();
-    offPeakHour.setHours(20);
-
-    jest.spyOn(Date.prototype, 'getHours')
-      .mockReturnValueOnce(peakHour.getHours())
-    tweetServiceMock.createTweet.mockResolvedValue(mockTweet as any);
-
-    tweetServiceMock.createTweet.mockResolvedValue(mockTweet as any);
-
-    await continuousInsert();
-    
-    // First insert (peak hours)
-    expect(chance.integer).toHaveBeenCalledWith({ min: 1000, max: 3000 });
-    
-    jest.advanceTimersByTime(1000);
-    
-    // Second insert (off-peak hours)
-    expect(chance.integer).toHaveBeenCalledWith({ min: 5000, max: 10000 });
-  });
-
-  it('should handle tweet creation errors and retry', async () => {
-    const error = new Error('Tweet creation failed');
-    tweetServiceMock.createTweet.mockRejectedValue(error);
-
-    await continuousInsert();
-    
-    expect(console.error).toHaveBeenCalledWith('Insert failed:', error);
-    expect(metrics.errorCounter.inc).toHaveBeenCalledWith({ type: 'continuous_insert' });
-    
-    // Verify retry timeout
-    expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 5000);
-  });
-
-  it('should handle graceful shutdown on SIGTERM', async () => {
-    tweetServiceMock.createTweet.mockResolvedValue(mockTweet as any);
-
-    await continuousInsert();
-    
-    // Simulate SIGTERM
-    process.emit('SIGTERM');
-    
-    expect(tweetServiceMock.disconnect).toHaveBeenCalled();
-    expect(console.log).toHaveBeenCalledWith('Shutting down...');
-    expect(process.exit).toHaveBeenCalledWith(0);
-  });
-
-  it('should handle graceful shutdown on SIGINT', async () => {
-    tweetServiceMock.createTweet.mockResolvedValue(mockTweet as any);
-
-    await continuousInsert();
-    
-    // Simulate SIGINT
-    process.emit('SIGINT');
-    
-    expect(tweetServiceMock.disconnect).toHaveBeenCalled();
-    expect(console.log).toHaveBeenCalledWith('Received SIGINT. Gracefully shutting down...');
-    expect(process.exit).toHaveBeenCalledWith(0);
-  });
-
-  it('should handle database connection errors', async () => {
-    const dbError = new Error('DB connection failed');
-    (connectDB as jest.Mock).mockRejectedValue(dbError);
-
-    await continuousInsert();
-    
-    expect(console.error).toHaveBeenCalledWith('Failed to start continuous insert:', dbError);
-    expect(process.exit).toHaveBeenCalledWith(1);
-  });
-
-  it('should log tweet information correctly', async () => {
-    tweetServiceMock.createTweet.mockResolvedValue(mockTweet as any);
-
-    await continuousInsert();
-    
-    expect(console.log).toHaveBeenCalledWith(expect.objectContaining({
-      timestamp: expect.any(String),
-      insertCount: 1,
-      tweetId: mockTweet.tweetId,
-      user: mockTweet.user,
-      sentiment: mockTweet.sentiment,
-      engagement: mockTweet.metrics,
-      nextInsertDelay: expect.any(Number)
-    }));
-  });
-});
-
-export { continuousInsert };

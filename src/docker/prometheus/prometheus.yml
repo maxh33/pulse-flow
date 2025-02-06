@@ -9,7 +9,7 @@ scrape_configs:
     scheme: 'http'
 
 remote_write:
-  - url: "${GRAFANA_CLOUD_URL}/api/prom/push"
+  - url: "http://prometheus:9090/api/prom/push"
     basic_auth:
-      username: "api_key"
+      username: "${GRAFANA_API_KEY}"
       password: "${GRAFANA_API_KEY}"
