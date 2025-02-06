@@ -19,3 +19,5 @@ remote_write:
       - source_labels: [__name__]
         regex: 'pulse_flow_.+'
         action: keep
+    headers:
+      X-Prometheus-Remote-Write-Version: "0.1.0"

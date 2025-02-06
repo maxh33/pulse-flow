@@ -194,7 +194,9 @@ export async function pushMetrics(): Promise<void> {
 
     await axios.post(url, metricsData, {
       headers: {
-        'Content-Type': register.contentType
+        'Content-Type': 'text/plain',
+        'X-Prometheus-Remote-Write-Version': '0.1.0',
+        'Accept': '*/*'
       },
       auth: {
         username: process.env.GRAFANA_USERNAME || '',
