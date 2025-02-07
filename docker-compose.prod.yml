@@ -10,6 +10,20 @@ networks:
       com.docker.compose.project: "pulse-flow"
 
 services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    networks:
+      - app_network
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   app:
     networks:
       - app_network
@@ -40,7 +54,8 @@ services:
         max-size: "10m"
         max-file: "3"
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
 
   prometheus:
     networks:

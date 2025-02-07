@@ -1,10 +1,16 @@
 FROM node:18-slim
 
-# Install dependencies including Snappy
+# Install system dependencies
 RUN apt-get update && \
-    apt-get install -y python3 make g++ libsnappy1v5 libsnappy-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    curl \
+    python3 \
+    make \
+    g++ \
+    libsnappy-dev \
+    libsnappy1v5 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -22,13 +28,10 @@ RUN npm run build
 
 # Remove development dependencies and build tools
 RUN npm prune --production && \
-    apt-get remove -y python3 make g++ libsnappy-dev && \
+    apt-get remove -y python3 make g++ && \
     apt-get autoremove -y
-
-# Keep only runtime Snappy library
-RUN apt-get install -y --no-install-recommends libsnappy1v5 && \
-    rm -rf /var/lib/apt/lists/*
 
 EXPOSE 3000
 
+# Use start:prod script from package.json
 CMD ["npm", "run", "start:prod"] 
