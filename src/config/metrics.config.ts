@@ -40,3 +40,15 @@ export const requestCounter = new Counter({
   labelNames: ['method', 'endpoint', 'status'],
   registers: [registry],
 });
+
+export const metricsConfig = {
+  pushUrl: process.env.GRAFANA_PUSH_URL,
+  username: process.env.GRAFANA_USERNAME,
+  apiKey: process.env.GRAFANA_API_KEY,
+  prefix: 'pulse_flow_',
+  pushInterval: parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'),
+  defaultLabels: {
+    app: 'pulse-flow',
+    environment: process.env.NODE_ENV || 'development'
+  }
+};

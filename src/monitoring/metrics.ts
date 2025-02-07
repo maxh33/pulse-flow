@@ -1,27 +1,30 @@
 import client, { Counter, Registry, Gauge } from 'prom-client';
 import { Express } from 'express';
-import { grafanaConfig } from '../config/grafana.config';
 import axios from 'axios';
 import snappy from 'snappy';
+import { metricsConfig } from '../config/metrics.config';
 
-// Create and export the registry
-export const register: Registry = new client.Registry();
+// Create registry
+export const register = new client.Registry();
+
+// Initialize metrics with default labels
+register.setDefaultLabels(metricsConfig.defaultLabels);
 
 // Initialize default metrics
 client.collectDefaultMetrics({ 
   register,
-  prefix: grafanaConfig.metrics.prefix
+  prefix: metricsConfig.prefix 
 });
 
-// Export all required metrics
+// Export metrics
 export const tweetCounter = new Counter({
-  name: 'pulse_flow_tweets_total',
+  name: `${metricsConfig.prefix}tweets_total`,
   help: 'Total number of tweets processed',
   registers: [register]
 });
 
 export const errorCounter = new Counter({
-  name: 'errors_total',
+  name: `${metricsConfig.prefix}errors_total`,
   help: 'Total number of errors',
   labelNames: ['type'],
   registers: [register]
@@ -34,37 +37,22 @@ export const engagementGauge = new Gauge({
   registers: [register]
 });
 
-// Compress metrics data
-const compressMetrics = async (data: string): Promise<Buffer> => {
-  try {
-    return await snappy.compress(Buffer.from(data));
-  } catch (err) {
-    console.error('Compression error:', err);
-    throw err;
-  }
-};
-
 // Push metrics to Grafana Cloud
 export async function pushMetrics(): Promise<void> {
   try {
-    const metricsData = await register.metrics();
-    const url = process.env.GRAFANA_PUSH_URL;
-    const username = process.env.GRAFANA_USERNAME;
-    const token = process.env.GRAFANA_API_TOKEN;
+    const metrics = await register.metrics();
+    const compressed = await snappy.compress(Buffer.from(metrics));
 
-    if (!url || !username || !token) {
-      throw new Error('Missing Grafana configuration');
-    }
-
-    const compressedData = await compressMetrics(metricsData);
-
-    await axios.post(url, compressedData, {
+    await axios.post(metricsConfig.pushUrl!, compressed, {
       headers: {
         'Content-Type': 'application/x-protobuf',
         'Content-Encoding': 'snappy',
         'X-Prometheus-Remote-Write-Version': '0.1.0'
       },
-      auth: { username, password: token }
+      auth: {
+        username: metricsConfig.username!,
+        password: metricsConfig.apiKey!
+      }
     });
   } catch (error) {
     console.error('Metrics push failed:', error);
