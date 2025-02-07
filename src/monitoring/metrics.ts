@@ -195,8 +195,22 @@ export async function pushMetrics(): Promise<void> {
       throw new Error('Missing required Grafana configuration');
     }
 
-    // Compress metrics data using snappy
-    const compressedData = await snappy.compress(Buffer.from(metricsData));
+    // Convert metrics to protocol buffer format
+    const writeRequest = {
+      timeseries: [{
+        labels: [{
+          name: '__name__',
+          value: 'pulse_flow_metrics'
+        }],
+        samples: [{
+          value: 1,
+          timestamp: Date.now()
+        }]
+      }]
+    };
+
+    // Compress the protocol buffer data
+    const compressedData = await snappy.compress(Buffer.from(JSON.stringify(writeRequest)));
 
     await axios.post(url, compressedData, {
       headers: {
