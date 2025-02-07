@@ -48,6 +48,11 @@ export const metricsConfig = {
   pushInterval: parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'),
   defaultLabels: {
     app: 'pulse-flow',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    instance: process.env.HOSTNAME || 'unknown',
+    stack: 'pulse-flow-prod'
+  },
+  headers: {
+    'X-Scope-OrgID': process.env.GRAFANA_USERNAME
   }
 };

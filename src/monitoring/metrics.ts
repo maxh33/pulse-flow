@@ -43,16 +43,22 @@ export async function pushMetrics(): Promise<void> {
     const metrics = await register.metrics();
     const compressed = await snappy.compress(Buffer.from(metrics));
 
-    const auth = Buffer.from(`${process.env.GRAFANA_USERNAME}:${process.env.GRAFANA_API_KEY}`).toString('base64');
+    // Remove any potential "Bearer" or "Basic" prefix from the API key
+    const cleanApiKey = process.env.GRAFANA_API_KEY?.replace(/^(Bearer|Basic)\s+/i, '');
 
     await axios.post(metricsConfig.pushUrl!, compressed, {
       headers: {
         'Content-Type': 'application/x-protobuf',
         'Content-Encoding': 'snappy',
         'X-Prometheus-Remote-Write-Version': '0.1.0',
-        'Authorization': `Basic ${auth}`
+        'Authorization': cleanApiKey // Use the API key directly without Basic or Bearer prefix
       },
-      timeout: 30000
+      timeout: 30000,
+      // Add auth parameter for axios
+      auth: {
+        username: process.env.GRAFANA_USERNAME!,
+        password: cleanApiKey!
+      }
     });
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -60,7 +66,10 @@ export async function pushMetrics(): Promise<void> {
         status: error.response?.status,
         data: error.response?.data,
         url: metricsConfig.pushUrl,
-        headers: error.response?.config?.headers
+        headers: {
+          ...error.response?.config?.headers,
+          Authorization: '***' // Hide the actual token in logs
+        }
       });
     } else {
       console.error('Metrics push failed:', error);
