@@ -43,14 +43,16 @@ export async function pushMetrics(): Promise<void> {
     const metrics = await register.metrics();
     const compressed = await snappy.compress(Buffer.from(metrics));
 
+    const auth = Buffer.from(`${process.env.GRAFANA_USERNAME}:${process.env.GRAFANA_API_KEY}`).toString('base64');
+
     await axios.post(metricsConfig.pushUrl!, compressed, {
       headers: {
         'Content-Type': 'application/x-protobuf',
         'Content-Encoding': 'snappy',
         'X-Prometheus-Remote-Write-Version': '0.1.0',
-        'Authorization': `Bearer ${metricsConfig.apiKey}`
+        'Authorization': `Basic ${auth}`
       },
-      timeout: 30000 // 30 seconds timeout
+      timeout: 30000
     });
   } catch (error) {
     if (axios.isAxiosError(error)) {
