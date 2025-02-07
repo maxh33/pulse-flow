@@ -34,10 +34,10 @@ export const engagementGauge = new Gauge({
   registers: [register]
 });
 
-// Simplified compress function
-const compress = async (data: Buffer): Promise<Buffer> => {
+// Compress metrics data
+const compressMetrics = async (data: string): Promise<Buffer> => {
   try {
-    return await snappy.compress(data);
+    return await snappy.compress(Buffer.from(data));
   } catch (err) {
     console.error('Compression error:', err);
     throw err;
@@ -56,7 +56,7 @@ export async function pushMetrics(): Promise<void> {
       throw new Error('Missing Grafana configuration');
     }
 
-    const compressedData = await compress(Buffer.from(metricsData));
+    const compressedData = await compressMetrics(metricsData);
 
     await axios.post(url, compressedData, {
       headers: {
