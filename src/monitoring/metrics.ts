@@ -4,8 +4,6 @@ import { grafanaConfig } from '../config/grafana.config';
 import helmet from 'helmet';
 import { z } from 'zod';
 import axios from 'axios';
-import { RemoteWriter } from 'prometheus-remote-write';
-import snappy from 'snappy';
 
 // Create and export the registry with proper typing
 export const register: Registry = new Registry();
@@ -194,31 +192,23 @@ export async function pushMetrics(): Promise<void> {
       throw new Error('GRAFANA_PUSH_URL is not defined');
     }
 
-    const writer = new RemoteWriter({
-      url,
+    await axios.post(url, metricsData, {
       headers: {
         'Content-Type': 'application/x-protobuf',
+        'X-Prometheus-Remote-Write-Version': '0.1.0'
       },
       auth: {
         username: process.env.GRAFANA_USERNAME || '',
         password: process.env.GRAFANA_API_TOKEN || ''
       }
     });
-
-    await writer.write([{
-      name: 'pulse_flow_metrics',
-      timestamp: Date.now(),
-      value: metricsData
-    }]);
     
     console.log('Metrics pushed successfully');
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error('Failed to push metrics:', {
         status: error.response?.status,
-        statusText: error.response?.statusText,
-        url: error.config?.url,
-        data: error.response?.data
+        statusText: error.response?.statusText
       });
     } else {
       console.error('Failed to push metrics:', error);
