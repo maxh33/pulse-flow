@@ -182,7 +182,7 @@ export const TweetSchema = z.object({
   platform: z.enum(['web', 'android', 'ios'])
 });
 
-// Push metrics to Grafana Cloud with proper typing
+// Push metrics to Grafana Cloud
 export async function pushMetrics(): Promise<void> {
   try {
     const metricsData = await register.metrics();
@@ -191,48 +191,67 @@ export async function pushMetrics(): Promise<void> {
     const token = process.env.GRAFANA_API_TOKEN;
 
     if (!url || !username || !token) {
+      console.error('Missing Grafana configuration:', {
+        hasUrl: !!url,
+        hasUsername: !!username,
+        hasToken: !!token
+      });
       throw new Error('Missing required Grafana configuration');
     }
 
-    await axios.post(url, metricsData, {
+    const response = await axios.post(url, metricsData, {
       headers: {
-        'Content-Type': register.contentType,
+        'Content-Type': 'application/x-protobuf',
         'X-Prometheus-Remote-Write-Version': '0.1.0'
       },
       auth: {
         username,
         password: token
-      }
+      },
+      validateStatus: (status) => status < 500 // Log all responses
     });
-    
-    console.log('Metrics pushed successfully');
+
+    if (response.status === 200) {
+      console.log('Metrics pushed successfully');
+    } else {
+      console.error('Metrics push failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+        headers: response.headers,
+        requestContentType: response.config?.headers?.['Content-Type'],
+        metricsContentType: register.contentType,
+        metricsSize: metricsData.length
+      });
+    }
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error('Failed to push metrics:', {
+      console.error('Metrics push error:', {
+        message: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        headers: error.response?.headers
+        headers: error.response?.headers,
+        requestConfig: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
       });
     } else {
-      console.error('Failed to push metrics:', error);
+      console.error('Unknown error during metrics push:', error);
     }
   }
 }
 
-// Setup periodic push (every 15 seconds)
-setInterval(pushMetrics, 15000);
-
+// Simplified metrics collection start
 export async function startMetricsCollection(): Promise<() => void> {
-  const interval = setInterval(async () => {
-    try {
-      await pushMetrics();
-    } catch (error) {
-      console.error('Error pushing metrics:', error);
-    }
-  }, parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'));
+  console.log('Starting metrics collection with interval:', process.env.METRICS_PUSH_INTERVAL || '15000');
+  
+  const interval = setInterval(pushMetrics, 
+    parseInt(process.env.METRICS_PUSH_INTERVAL || '15000')
+  );
 
-  // Return cleanup function
   return () => {
     clearInterval(interval);
     console.log('Metrics collection stopped');
