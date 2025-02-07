@@ -4,7 +4,6 @@ import { grafanaConfig } from '../config/grafana.config';
 import helmet from 'helmet';
 import { z } from 'zod';
 import axios from 'axios';
-import snappy from 'snappy';
 
 // Create and export the registry with proper typing
 export const register: Registry = new Registry();
@@ -195,27 +194,9 @@ export async function pushMetrics(): Promise<void> {
       throw new Error('Missing required Grafana configuration');
     }
 
-    // Convert metrics to protocol buffer format
-    const writeRequest = {
-      timeseries: [{
-        labels: [{
-          name: '__name__',
-          value: 'pulse_flow_metrics'
-        }],
-        samples: [{
-          value: 1,
-          timestamp: Date.now()
-        }]
-      }]
-    };
-
-    // Compress the protocol buffer data
-    const compressedData = await snappy.compress(Buffer.from(JSON.stringify(writeRequest)));
-
-    await axios.post(url, compressedData, {
+    await axios.post(url, metricsData, {
       headers: {
-        'Content-Type': 'application/x-protobuf',
-        'Content-Encoding': 'snappy',
+        'Content-Type': register.contentType,
         'X-Prometheus-Remote-Write-Version': '0.1.0'
       },
       auth: {
@@ -230,7 +211,8 @@ export async function pushMetrics(): Promise<void> {
       console.error('Failed to push metrics:', {
         status: error.response?.status,
         statusText: error.response?.statusText,
-        data: error.response?.data
+        data: error.response?.data,
+        headers: error.response?.headers
       });
     } else {
       console.error('Failed to push metrics:', error);

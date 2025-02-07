@@ -1,4 +1,4 @@
-import client, { Counter, Registry } from 'prom-client';
+import client, { Counter } from 'prom-client';
 
 const registry = new client.Registry();
 
