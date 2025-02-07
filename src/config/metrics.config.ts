@@ -43,7 +43,7 @@ export const requestCounter = new Counter({
 
 export const metricsConfig = {
   pushUrl: process.env.GRAFANA_PUSH_URL,
-  username: process.env.GRAFANA_USERNAME,
+  username: process.env.GRAFANA_USERNAME || 'sa-1-admin',
   apiKey: process.env.GRAFANA_API_KEY,
   prefix: 'pulse_flow_',
   pushInterval: parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'),

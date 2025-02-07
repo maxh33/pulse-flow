@@ -47,15 +47,20 @@ export async function pushMetrics(): Promise<void> {
       headers: {
         'Content-Type': 'application/x-protobuf',
         'Content-Encoding': 'snappy',
-        'X-Prometheus-Remote-Write-Version': '0.1.0'
-      },
-      auth: {
-        username: metricsConfig.username!,
-        password: metricsConfig.apiKey!
+        'X-Prometheus-Remote-Write-Version': '0.1.0',
+        'Authorization': `Bearer ${metricsConfig.apiKey}`
       }
     });
   } catch (error) {
-    console.error('Metrics push failed:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Metrics push failed:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        url: metricsConfig.pushUrl
+      });
+    } else {
+      console.error('Metrics push failed:', error);
+    }
     errorCounter.inc({ type: 'metrics_push' });
   }
 }
