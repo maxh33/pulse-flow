@@ -4,6 +4,7 @@ import { grafanaConfig } from '../config/grafana.config';
 import helmet from 'helmet';
 import { z } from 'zod';
 import axios from 'axios';
+import snappy from 'snappy';
 
 // Create and export the registry with proper typing
 export const register: Registry = new Registry();
@@ -194,9 +195,13 @@ export async function pushMetrics(): Promise<void> {
       throw new Error('Missing required Grafana configuration');
     }
 
-    await axios.post(url, metricsData, {
+    // Compress metrics data using snappy
+    const compressedData = await snappy.compress(Buffer.from(metricsData));
+
+    await axios.post(url, compressedData, {
       headers: {
-        'Content-Type': 'text/plain',
+        'Content-Type': 'application/x-protobuf',
+        'Content-Encoding': 'snappy',
         'X-Prometheus-Remote-Write-Version': '0.1.0'
       },
       auth: {
