@@ -1,4 +1,4 @@
-import client, { Counter, Registry } from 'prom-client';
+import client, { Counter, Registry, Gauge } from 'prom-client';
 import { Express } from 'express';
 import { grafanaConfig } from '../config/grafana.config';
 import axios from 'axios';
@@ -13,7 +13,13 @@ client.collectDefaultMetrics({
   prefix: grafanaConfig.metrics.prefix
 });
 
-// Basic metrics setup
+// Export all required metrics
+export const tweetCounter = new Counter({
+  name: 'pulse_flow_tweets_total',
+  help: 'Total number of tweets processed',
+  registers: [register]
+});
+
 export const errorCounter = new Counter({
   name: 'errors_total',
   help: 'Total number of errors',
@@ -21,14 +27,21 @@ export const errorCounter = new Counter({
   registers: [register]
 });
 
+export const engagementGauge = new Gauge({
+  name: 'tweet_engagement',
+  help: 'Current engagement metrics',
+  labelNames: ['type'],
+  registers: [register]
+});
+
 // Simplified compress function
-const compress = (data: Buffer): Promise<Buffer> => {
-  return new Promise((resolve, reject) => {
-    snappy.compress(data, (err: Error | null, result: Buffer) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
-  });
+const compress = async (data: Buffer): Promise<Buffer> => {
+  try {
+    return await snappy.compress(data);
+  } catch (err) {
+    console.error('Compression error:', err);
+    throw err;
+  }
 };
 
 // Push metrics to Grafana Cloud
@@ -53,7 +66,6 @@ export async function pushMetrics(): Promise<void> {
       },
       auth: { username, password: token }
     });
-
   } catch (error) {
     console.error('Metrics push failed:', error);
     errorCounter.inc({ type: 'metrics_push' });

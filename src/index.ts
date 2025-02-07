@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { connectDB } from './config/mongodb.config';
-import { setupMetrics, startMetricsCollection, pushMetrics } from './monitoring/metrics';
+import { setupMetrics, pushMetrics } from './monitoring/metrics';
 import { healthRoutes } from './routes/health.routes';
 import { pingRoutes } from './routes/ping.routes';
 import { errorHandler } from './middleware/errorHandler';
