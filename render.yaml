@@ -17,7 +17,7 @@ services:
         sync: false
       - key: GRAFANA_USERNAME
         sync: false
-      - key: GRAFANA_API_TOKEN
+      - key: GRAFANA_API_KEY
         sync: false
       - key: PORT
         value: 3000

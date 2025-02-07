@@ -57,6 +57,7 @@ jobs:
           MONGODB_URI=${{ secrets.MONGODB_URI }}
           GRAFANA_CLOUD_URL=${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY=${{ secrets.GRAFANA_API_KEY }}
+          GRAFANA_USERNAME=${{ secrets.GRAFANA_USERNAME }}
           EOL
 
       - name: Build and push Docker image
@@ -88,6 +89,7 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+          GRAFANA_USERNAME: ${{ secrets.GRAFANA_USERNAME }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Wait for app to start
