@@ -48,15 +48,17 @@ export async function pushMetrics(): Promise<void> {
         'Content-Type': 'application/x-protobuf',
         'Content-Encoding': 'snappy',
         'X-Prometheus-Remote-Write-Version': '0.1.0',
-        'Authorization': `Bearer ${metricsConfig.apiKey}`
-      }
+        'Authorization': `Basic ${Buffer.from(`${metricsConfig.username}:${metricsConfig.apiKey}`).toString('base64')}`
+      },
+      timeout: 30000 // 30 seconds timeout
     });
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error('Metrics push failed:', {
         status: error.response?.status,
         data: error.response?.data,
-        url: metricsConfig.pushUrl
+        url: metricsConfig.pushUrl,
+        headers: error.response?.config?.headers
       });
     } else {
       console.error('Metrics push failed:', error);
