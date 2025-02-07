@@ -187,19 +187,21 @@ export async function pushMetrics(): Promise<void> {
   try {
     const metricsData = await register.metrics();
     const url = process.env.GRAFANA_PUSH_URL;
+    const username = process.env.GRAFANA_USERNAME;
+    const token = process.env.GRAFANA_API_TOKEN;
 
-    if (!url) {
-      throw new Error('GRAFANA_PUSH_URL is not defined');
+    if (!url || !username || !token) {
+      throw new Error('Missing required Grafana configuration');
     }
 
     await axios.post(url, metricsData, {
       headers: {
-        'Content-Type': 'application/x-protobuf',
+        'Content-Type': 'text/plain',
         'X-Prometheus-Remote-Write-Version': '0.1.0'
       },
       auth: {
-        username: process.env.GRAFANA_USERNAME || '',
-        password: process.env.GRAFANA_API_TOKEN || ''
+        username,
+        password: token
       }
     });
     
@@ -208,7 +210,8 @@ export async function pushMetrics(): Promise<void> {
     if (axios.isAxiosError(error)) {
       console.error('Failed to push metrics:', {
         status: error.response?.status,
-        statusText: error.response?.statusText
+        statusText: error.response?.statusText,
+        data: error.response?.data
       });
     } else {
       console.error('Failed to push metrics:', error);
