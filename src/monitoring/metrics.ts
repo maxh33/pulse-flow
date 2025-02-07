@@ -48,7 +48,7 @@ export async function pushMetrics(): Promise<void> {
         'Content-Type': 'application/x-protobuf',
         'Content-Encoding': 'snappy',
         'X-Prometheus-Remote-Write-Version': '0.1.0',
-        'Authorization': `Basic ${Buffer.from(`${metricsConfig.username}:${metricsConfig.apiKey}`).toString('base64')}`
+        'Authorization': `Bearer ${metricsConfig.apiKey}`
       },
       timeout: 30000 // 30 seconds timeout
     });

@@ -12,11 +12,8 @@ scrape_configs:
 
 remote_write:
   - url: "${GRAFANA_PUSH_URL}"
-    basic_auth:
-      username: "${GRAFANA_USERNAME}"
-      password: "${GRAFANA_API_KEY}"
     headers:
-      X-Prometheus-Remote-Write-Version: "0.1.0"
+      Authorization: "Bearer ${GRAFANA_API_KEY}"
     write_relabel_configs:
       - source_labels: [__name__]
         regex: 'pulse_flow_.+'
