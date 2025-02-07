@@ -15,10 +15,9 @@ services:
       - app_network
     container_name: pulse-flow-app
     image: ghcr.io/${GITHUB_REPOSITORY:-pulse-flow}:latest
-    build: 
+    build:
       context: .
-      dockerfile: Dockerfile
-      target: production
+      dockerfile: Dockerfile.prod
     ports:
       - "3000:3000"
     deploy:
@@ -40,6 +39,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    depends_on:
+      - mongodb
 
   prometheus:
     networks:
@@ -80,3 +81,4 @@ services:
 
 volumes:
   prometheus_data:
+  mongodb_data:

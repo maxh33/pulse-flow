@@ -46,12 +46,12 @@ The application exports metrics in Prometheus format and pushes them to Grafana 
 # Dashboards
 
 ### Grafana Performance Dashboard
-![Grafana Dashboard](public\GrafanaEx.png)
+![Grafana Dashboard](public/GrafanaEx.png)
 
 **[>> View LIVE Grafana Dashboard HERE <<](https://maxh33.grafana.net/public-dashboards/2f5dd656ee264fd2ac6f13f1aa1b4004)**
 
 ## MongoDB Charts Dashboard
-![MongoDB Charts Dashboard](public\MainMetrics.png)
+![MongoDB Charts Dashboard](public/MainMetrics.png)
 
 **[>> View LIVE MongoDB Charts Dashboard HERE <<](https://charts.mongodb.com/charts-project-0-tmkdyjw/public/dashboards/6798e048-db1e-4c24-85a6-e942bec5d15f)**
 

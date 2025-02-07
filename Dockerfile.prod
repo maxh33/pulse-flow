@@ -1,0 +1,34 @@
+FROM node:18-slim
+
+# Install dependencies including Snappy
+RUN apt-get update && \
+    apt-get install -y python3 make g++ libsnappy1v5 libsnappy-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build TypeScript
+RUN npm run build
+
+# Remove development dependencies and build tools
+RUN npm prune --production && \
+    apt-get remove -y python3 make g++ libsnappy-dev && \
+    apt-get autoremove -y
+
+# Keep only runtime Snappy library
+RUN apt-get install -y --no-install-recommends libsnappy1v5 && \
+    rm -rf /var/lib/apt/lists/*
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start:prod"] 
