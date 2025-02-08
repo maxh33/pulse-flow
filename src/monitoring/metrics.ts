@@ -50,19 +50,40 @@ export async function pushMetrics() {
     // Compress the metrics data
     const compressedPayload = await snappy.compress(Buffer.from(metricsData));
 
-    // Push to Grafana Cloud
+    // Prepare authentication
+    const authConfig = {
+      username: process.env.GRAFANA_USERNAME!,
+      password: process.env.GRAFANA_API_KEY!
+    };
+
+    // Push to Grafana Cloud with comprehensive error handling
     await axios.post(metrics.pushUrl!, compressedPayload, {
+      auth: authConfig,
       headers: {
         'Content-Type': 'application/x-protobuf',
         'Content-Encoding': 'snappy',
         'X-Prometheus-Remote-Write-Version': '0.1.0',
         'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`
-      }
+      },
+      validateStatus: (status) => status === 200 || status === 204
     });
 
     console.log('Metrics pushed successfully');
   } catch (error) {
-    console.error('Metrics push failed:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Metrics push failed:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+    } else {
+      console.error('Unexpected metrics push error:', error);
+    }
+    
+    // Optionally increment an error metric
+    errorCounter.inc({ type: 'metrics_push_failure' });
+    
+    // Re-throw to allow caller to handle
     throw error;
   }
 }
