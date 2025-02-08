@@ -41,24 +41,115 @@ export const engagementGauge = new Gauge({
   registers: [register]
 });
 
+// Protobuf structure for metrics
+function createProtobufPayload(metricsData: string) {
+  // Simple Protobuf message structure
+  const root = protobuf.Root.fromJSON({
+    nested: {
+      prometheus: {
+        nested: {
+          WriteRequest: {
+            fields: {
+              timeseries: {
+                rule: 'repeated',
+                type: 'TimeSeries',
+                id: 1
+              }
+            }
+          },
+          TimeSeries: {
+            fields: {
+              labels: {
+                rule: 'repeated',
+                type: 'Label',
+                id: 1
+              },
+              samples: {
+                rule: 'repeated',
+                type: 'Sample',
+                id: 2
+              }
+            }
+          },
+          Label: {
+            fields: {
+              name: {
+                type: 'string',
+                id: 1
+              },
+              value: {
+                type: 'string',
+                id: 2
+              }
+            }
+          },
+          Sample: {
+            fields: {
+              value: {
+                type: 'double',
+                id: 1
+              },
+              timestamp: {
+                type: 'int64',
+                id: 2
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Parse metrics data
+  const metricLines = metricsData.split('\n');
+  const WriteRequest = root.lookupType('prometheus.WriteRequest');
+  
+  // Convert metrics to TimeSeries
+  const timeseries = metricLines
+    .filter(line => line.trim() && !line.startsWith('#'))
+    .map(line => {
+      const [metricName, value, timestamp] = line.split(' ');
+      
+      return {
+        labels: [
+          { name: '__name__', value: metricName },
+          { name: 'app', value: 'pulse-flow' },
+          { name: 'environment', value: process.env.NODE_ENV || 'development' }
+        ],
+        samples: [{
+          value: parseFloat(value),
+          timestamp: parseInt(timestamp) || Date.now()
+        }]
+      };
+    });
+
+  // Create Protobuf message
+  const message = WriteRequest.create({ timeseries });
+  
+  // Verify the message
+  const errMsg = WriteRequest.verify(message);
+  if (errMsg) throw new Error(`Invalid Protobuf message: ${errMsg}`);
+
+  // Encode the message
+  return WriteRequest.encode(message).finish();
+}
+
 // Push metrics to Grafana Cloud
 export async function pushMetrics() {
   try {
     // Create Protobuf payload from metrics
     const metricsData = await registry.metrics();
+    const protobufPayload = createProtobufPayload(metricsData);
     
     // Compress the metrics data
-    const compressedPayload = await snappy.compress(Buffer.from(metricsData));
-
-    // Prepare authentication
-    const authConfig = {
-      username: process.env.GRAFANA_USERNAME!,
-      password: process.env.GRAFANA_API_KEY!
-    };
+    const compressedPayload = await snappy.compress(Buffer.from(protobufPayload));
 
     // Push to Grafana Cloud with comprehensive error handling
     await axios.post(metrics.pushUrl!, compressedPayload, {
-      auth: authConfig,
+      auth: {
+        username: process.env.GRAFANA_USERNAME!,
+        password: process.env.GRAFANA_API_KEY!
+      },
       headers: {
         'Content-Type': 'application/x-protobuf',
         'Content-Encoding': 'snappy',
