@@ -44,7 +44,8 @@ export async function pushMetrics(): Promise<void> {
     await axios.post(metricsConfig.pushUrl!, metrics, {
       headers: {
         'Content-Type': register.contentType,
-        'Authorization': process.env.GRAFANA_API_KEY
+        'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`,
+        'X-Scope-OrgID': process.env.GRAFANA_USERNAME
       },
       timeout: 30000
     });
