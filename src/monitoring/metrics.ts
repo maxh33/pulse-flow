@@ -41,9 +41,31 @@ export const engagementGauge = new Gauge({
   registers: [register]
 });
 
-// Protobuf structure for metrics
+// Sanitize metric names to be Prometheus/Mimir compliant
+function sanitizeMetricName(name: string): string {
+  // Remove any non-alphanumeric characters except underscores
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/__+/g, '_')
+    .replace(/^[^a-z_]/, '_');
+}
+
 function createProtobufPayload(metricsData: string) {
-  // Simple Protobuf message structure
+  // Sanitize and validate metric names
+  const sanitizedMetricLines = metricsData
+    .split('\n')
+    .map(line => {
+      const parts = line.split(' ');
+      if (parts.length >= 2) {
+        parts[0] = sanitizeMetricName(parts[0]);
+        return parts.join(' ');
+      }
+      return line;
+    })
+    .filter(line => line.trim() && !line.startsWith('#'));
+
+  // Create a simple Protobuf message structure
   const root = protobuf.Root.fromJSON({
     nested: {
       prometheus: {
@@ -100,38 +122,34 @@ function createProtobufPayload(metricsData: string) {
     }
   });
 
-  // Parse metrics data
-  const metricLines = metricsData.split('\n');
   const WriteRequest = root.lookupType('prometheus.WriteRequest');
   
   // Convert metrics to TimeSeries
-  const timeseries = metricLines
-    .filter(line => line.trim() && !line.startsWith('#'))
-    .map(line => {
-      const [metricName, value, timestamp] = line.split(' ');
-      
-      return {
-        labels: [
-          { name: '__name__', value: metricName },
-          { name: 'app', value: 'pulse-flow' },
-          { name: 'environment', value: process.env.NODE_ENV || 'development' }
-        ],
-        samples: [{
-          value: parseFloat(value),
-          timestamp: parseInt(timestamp) || Date.now()
-        }]
-      };
-    });
+  const timeseries = sanitizedMetricLines.map(line => {
+    const [metricName, value, timestamp] = line.split(' ');
+    
+    return {
+      labels: [
+        { name: '__name__', value: metricName },
+        { name: 'app', value: 'pulse_flow' },
+        { name: 'environment', value: process.env.NODE_ENV || 'development' }
+      ],
+      samples: [{
+        value: parseFloat(value),
+        timestamp: parseInt(timestamp) || Date.now()
+      }]
+    };
+  });
 
-  // Create Protobuf message
-  const message = WriteRequest.create({ timeseries });
-  
-  // Verify the message
-  const errMsg = WriteRequest.verify(message);
-  if (errMsg) throw new Error(`Invalid Protobuf message: ${errMsg}`);
+  // Create and verify the payload
+  const payload = { timeseries };
+  const errMsg = WriteRequest.verify(payload);
+  if (errMsg) {
+    console.error('Invalid payload:', errMsg);
+    throw new Error('Invalid metrics payload');
+  }
 
-  // Encode the message
-  return WriteRequest.encode(message).finish();
+  return WriteRequest.encode(payload).finish();
 }
 
 // Push metrics to Grafana Cloud
