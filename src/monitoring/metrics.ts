@@ -40,25 +40,35 @@ export const engagementGauge = new Gauge({
 // Push metrics to Grafana Cloud
 export async function pushMetrics(): Promise<void> {
   try {
+    // Get metrics in Prometheus format
     const metrics = await register.metrics();
-    const compressed = await snappy.compress(Buffer.from(metrics));
+    
+    // Convert to Protocol Buffers format
+    const timestamp = Date.now();
+    const metricLines = metrics.split('\n').filter(line => line && !line.startsWith('#'));
+    
+    const writeRequest = {
+      timeseries: metricLines.map(line => {
+        const [name, value] = line.split(' ');
+        return {
+          labels: [{ name: '__name__', value: name }],
+          samples: [{ value: parseFloat(value), timestamp }]
+        };
+      })
+    };
 
-    // Remove any potential "Bearer" or "Basic" prefix from the API key
-    const cleanApiKey = process.env.GRAFANA_API_KEY?.replace(/^(Bearer|Basic)\s+/i, '');
+    // Compress the data
+    const compressed = await snappy.compress(Buffer.from(JSON.stringify(writeRequest)));
 
     await axios.post(metricsConfig.pushUrl!, compressed, {
       headers: {
         'Content-Type': 'application/x-protobuf',
         'Content-Encoding': 'snappy',
         'X-Prometheus-Remote-Write-Version': '0.1.0',
-        'Authorization': cleanApiKey // Use the API key directly without Basic or Bearer prefix
+        'Authorization': `Bearer ${metricsConfig.apiKey}`,
+        'X-Scope-OrgID': process.env.GRAFANA_USERNAME
       },
-      timeout: 30000,
-      // Add auth parameter for axios
-      auth: {
-        username: process.env.GRAFANA_USERNAME!,
-        password: cleanApiKey!
-      }
+      timeout: 30000
     });
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -68,7 +78,7 @@ export async function pushMetrics(): Promise<void> {
         url: metricsConfig.pushUrl,
         headers: {
           ...error.response?.config?.headers,
-          Authorization: '***' // Hide the actual token in logs
+          Authorization: '***'
         }
       });
     } else {
