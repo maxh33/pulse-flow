@@ -12,8 +12,10 @@ scrape_configs:
 
 remote_write:
   - url: "${GRAFANA_PUSH_URL}"
-    authorization:
-      credentials: "${GRAFANA_API_KEY}"
+    basic_auth:
+      username: "${GRAFANA_USERNAME}"
+      password: "${GRAFANA_API_KEY}"
     write_relabel_configs:
       - source_labels: [__name__]
         regex: 'pulse_flow_.+'
+        action: keep

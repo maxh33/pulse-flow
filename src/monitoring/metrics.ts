@@ -43,10 +43,8 @@ export async function pushMetrics(): Promise<void> {
 
     await axios.post(metricsConfig.pushUrl!, metrics, {
       headers: {
-        'Content-Type': 'application/x-protobuf',
-        'X-Prometheus-Remote-Write-Version': '0.1.0',
-        'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`,
-        'X-Scope-OrgID': process.env.GRAFANA_USERNAME
+        'Content-Type': 'text/plain',
+        'Authorization': `Basic ${Buffer.from(`${process.env.GRAFANA_USERNAME}:${process.env.GRAFANA_API_KEY}`).toString('base64')}`,
       },
       timeout: 30000
     });
