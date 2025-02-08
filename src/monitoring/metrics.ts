@@ -39,12 +39,25 @@ export const engagementGauge = new Gauge({
 // Push metrics to Grafana Cloud
 export async function pushMetrics(): Promise<void> {
   try {
-    const metrics = await register.metrics();
+    // Get metrics in Prometheus text format
+    const metrics = await register.getMetricsAsJSON();
+    
+    // Convert to the format Grafana Cloud expects
+    const writeRequest = {
+      streams: [{
+        labels: `{job="pulse-flow"}`,
+        entries: [{
+          timestamp: Date.now() * 1000000, // Convert to nanoseconds
+          line: JSON.stringify(metrics)
+        }]
+      }]
+    };
 
-    await axios.post(metricsConfig.pushUrl!, metrics, {
+    await axios.post(metricsConfig.pushUrl!, writeRequest, {
       headers: {
-        'Content-Type': 'text/plain',
-        'Authorization': `Basic ${Buffer.from(`${process.env.GRAFANA_USERNAME}:${process.env.GRAFANA_API_KEY}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`,
+        'X-Scope-OrgID': process.env.GRAFANA_USERNAME
       },
       timeout: 30000
     });
