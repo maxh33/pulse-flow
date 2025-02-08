@@ -12,7 +12,8 @@
     "docker:prod": "docker-compose -f docker-compose.prod.yml up -d",
     "docker:build": "docker-compose -f docker-compose.prod.yml build",
     "verify:mongodb": "ts-node src/scripts/verify-mongodb.ts",
-    "verify:deployment": "ts-node src/scripts/verify-deployment.ts"
+    "verify:deployment": "ts-node src/scripts/verify-deployment.ts",
+    "verify:grafana": "ts-node src/scripts/verify-grafana.ts"
   },
   "keywords": [],
   "author": "",
@@ -36,6 +37,7 @@
     "mongodb": "^6.13.0",
     "mongoose": "^8.9.5",
     "prom-client": "^14.2.0",
+    "protobufjs": "^7.4.0",
     "snappy": "^7.2.2",
     "typescript": "^5.7.3",
     "zod": "^3.24.1"

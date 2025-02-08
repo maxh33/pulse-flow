@@ -1,5 +1,6 @@
 global:
   scrape_interval: 15s
+  evaluation_interval: 15s
   external_labels:
     monitor: 'pulse-flow'
 
@@ -9,12 +10,17 @@ scrape_configs:
       - targets: ['app:3000']
     metrics_path: '/metrics'
     scheme: 'http'
+    honor_labels: true
 
 remote_write:
   - url: "${GRAFANA_PUSH_URL}"
     basic_auth:
       username: "${GRAFANA_USERNAME}"
       password: "${GRAFANA_API_KEY}"
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 200
+      capacity: 2500
     write_relabel_configs:
       - source_labels: [__name__]
         regex: 'pulse_flow_.+'

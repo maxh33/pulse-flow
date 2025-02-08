@@ -14,7 +14,9 @@ const TweetSchema: Schema = new Schema<TweetDocument>({
   metrics: {
     retweets: { type: Number, required: true },
     likes: { type: Number, required: true },
-    comments: { type: Number, required: true }
+    comments: { type: Number, required: true },
+    total: { type: Number, required: true },
+    engagement_rate: { type: Number, required: true }
   },
   sentiment: { 
     type: String,
@@ -35,23 +37,34 @@ const TweetSchema: Schema = new Schema<TweetDocument>({
 
 const TweetModel = mongoose.model<TweetDocument>('Tweet', TweetSchema);
 
-export const createTweetData = (): TweetData => ({
-  tweetId: new mongoose.Types.ObjectId().toHexString(),
-  user: chance.twitter(),
-  content: chance.sentence(),
-  timestamp: new Date(),
-  metrics: {
-    retweets: chance.integer({ min: 0, max: 100 }),
-    likes: chance.integer({ min: 0, max: 1000 }),
-    comments: chance.integer({ min: 0, max: 500 })
-  },
-  sentiment: chance.pickone(['positive', 'neutral', 'negative']),
-  location: {
-    country: chance.country({ full: true }),
-    city: chance.city()
-  },
-  platform: chance.pickone(['web', 'android', 'ios']),
-  tags: chance.pickset(['tag1', 'tag2', 'tag3'], chance.integer({ min: 0, max: 3 }))
-});
+export const createTweetData = (): TweetData => {
+  const likes = chance.integer({ min: 0, max: 1000 });
+  const retweets = chance.integer({ min: 0, max: 100 });
+  const comments = chance.integer({ min: 0, max: 500 });
+  
+  const total = likes + retweets + comments;
+  const engagement_rate = parseFloat(((total / likes) * 100).toFixed(2));
+
+  return {
+    tweetId: new mongoose.Types.ObjectId().toHexString(),
+    user: chance.twitter(),
+    content: chance.sentence(),
+    timestamp: new Date(),
+    metrics: {
+      retweets,
+      likes,
+      comments,
+      total,
+      engagement_rate
+    },
+    sentiment: chance.pickone(['positive', 'neutral', 'negative']),
+    location: {
+      country: chance.country({ full: true }),
+      city: chance.city()
+    },
+    platform: chance.pickone(['web', 'android', 'ios']),
+    tags: chance.pickset(['tag1', 'tag2', 'tag3'], chance.integer({ min: 0, max: 3 }))
+  };
+};
 
 export default TweetModel;

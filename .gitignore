@@ -4,8 +4,10 @@ dist/
 
 # Environment
 .env
-.env.*
-!.env.example
+.env.local
+.env.development
+.env.production
+*.env.secret
 
 # Logs
 logs/

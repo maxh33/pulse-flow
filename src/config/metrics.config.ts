@@ -1,4 +1,4 @@
-import client, { Counter } from 'prom-client';
+import client from 'prom-client';
 
 const registry = new client.Registry();
 
@@ -15,44 +15,71 @@ client.collectDefaultMetrics({
   prefix: 'pulse_flow_'
 });
 
-export { registry };
-
 export const metrics = {
   tweetCounter: new client.Counter({
     name: 'pulse_flow_tweets_total',
     help: 'Total number of tweets',
+    labelNames: ['status', 'platform', 'sentiment'],
     registers: [registry]
   }),
-  errorCounter: new client.Counter({
-    name: 'errors_total',
-    help: 'Total number of errors'
+  engagementMetrics: new client.Gauge({
+    name: 'pulse_flow_tweet_engagement',
+    help: 'Tweet engagement metrics',
+    labelNames: ['type', 'platform', 'sentiment'],
+    registers: [registry]
   }),
-  tweetProcessingTime: new client.Histogram({
-    name: 'tweet_processing_duration_seconds',
-    help: 'Time spent processing tweets',
-    buckets: [0.1, 0.5, 1, 2, 5]
+  sentimentCounter: new client.Counter({
+    name: 'pulse_flow_tweet_sentiment_total',
+    help: 'Total tweets by sentiment',
+    labelNames: ['sentiment'],
+    registers: [registry]
+  }),
+  platformCounter: new client.Counter({
+    name: 'pulse_flow_tweet_platform_total',
+    help: 'Total tweets by platform',
+    labelNames: ['platform'],
+    registers: [registry]
   })
 };
 
-export const requestCounter = new Counter({
+export { registry };
+
+export const requestCounter = new client.Counter({
   name: 'http_requests_total',
   help: 'Total number of HTTP requests',
   labelNames: ['method', 'endpoint', 'status'],
   registers: [registry],
 });
 
+export const defaultLabels = {
+  app: 'pulse-flow',
+  environment: process.env.NODE_ENV || 'development',
+  instance: process.env.HOSTNAME || 'unknown'
+};
+
+export const prefix = 'pulse_flow_';
+
+export const pushUrl = process.env.GRAFANA_PUSH_URL;
+
 export const metricsConfig = {
-  pushUrl: process.env.GRAFANA_PUSH_URL,
-  apiKey: process.env.GRAFANA_API_KEY,
-  prefix: 'pulse_flow_',
-  pushInterval: parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'),
+  pushUrl,
+  prefix,
   defaultLabels: {
     app: 'pulse-flow',
     environment: process.env.NODE_ENV || 'development',
-    instance: process.env.HOSTNAME || 'unknown',
-    stack: 'pulse-flow-prod'
+    instance: process.env.HOSTNAME || 'unknown'
   },
-  headers: {
-    'X-Scope-OrgID': process.env.GRAFANA_USERNAME
+  pushInterval: parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'),
+  compression: {
+    enabled: true,
+    algorithm: 'snappy'
+  },
+  retryConfig: {
+    retries: 3,
+    backoff: {
+      initial: 1000,
+      max: 10000,
+      factor: 2
+    }
   }
 };

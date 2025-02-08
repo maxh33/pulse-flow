@@ -6,6 +6,7 @@ import { setupMetrics, pushMetrics } from './monitoring/metrics';
 import { healthRoutes } from './routes/health.routes';
 import { pingRoutes } from './routes/ping.routes';
 import { errorHandler } from './middleware/errorHandler';
+import { startMetricsScheduler } from './scripts/metrics-scheduler';
 
 const app = express();
 
@@ -71,6 +72,9 @@ async function startServer() {
 
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
+
+    // Start metrics scheduler
+    startMetricsScheduler();
 
   } catch (error) {
     console.error('Server startup failed:', error);

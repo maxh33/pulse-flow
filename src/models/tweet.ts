@@ -10,6 +10,8 @@ export interface TweetData {
     retweets: number;
     likes: number;
     comments: number;
+    total: number;
+    engagement_rate: number;
   };
   sentiment: 'positive' | 'neutral' | 'negative';
   location: {
@@ -28,7 +30,9 @@ const tweetSchema = new mongoose.Schema<TweetData>({
   metrics: {
     retweets: { type: Number, required: true },
     likes: { type: Number, required: true },
-    comments: { type: Number, required: true }
+    comments: { type: Number, required: true },
+    total: { type: Number, required: true },
+    engagement_rate: { type: Number, required: true }
   }
 });
 

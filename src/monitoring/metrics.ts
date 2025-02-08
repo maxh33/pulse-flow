@@ -1,29 +1,34 @@
 import client, { Counter, Registry, Gauge } from 'prom-client';
 import { Express } from 'express';
 import axios from 'axios';
-import { metricsConfig } from '../config/metrics.config';
+import * as metrics from '../config/metrics.config';
+import snappy from 'snappy';
+import * as protobuf from 'protobufjs';
+import { createTweetData } from '../factories/tweet.factory';
+import { registry } from '../config/metrics.config';
 
 // Create registry
 export const register = new client.Registry();
 
 // Initialize metrics with default labels
-register.setDefaultLabels(metricsConfig.defaultLabels);
+register.setDefaultLabels(metrics.defaultLabels);
 
 // Initialize default metrics
 client.collectDefaultMetrics({ 
   register,
-  prefix: metricsConfig.prefix 
+  prefix: metrics.prefix 
 });
 
 // Export metrics
-export const tweetCounter = new Counter({
-  name: `${metricsConfig.prefix}tweets_total`,
-  help: 'Total number of tweets processed',
-  registers: [register]
-});
+export const {
+  tweetCounter,
+  engagementMetrics,
+  sentimentCounter,
+  platformCounter
+} = metrics.metrics;
 
 export const errorCounter = new Counter({
-  name: `${metricsConfig.prefix}errors_total`,
+  name: `${metrics.prefix}errors_total`,
   help: 'Total number of errors',
   labelNames: ['type'],
   registers: [register]
@@ -37,45 +42,28 @@ export const engagementGauge = new Gauge({
 });
 
 // Push metrics to Grafana Cloud
-export async function pushMetrics(): Promise<void> {
+export async function pushMetrics() {
   try {
-    // Get metrics in Prometheus text format
-    const metrics = await register.getMetricsAsJSON();
+    // Create Protobuf payload from metrics
+    const metricsData = await registry.metrics();
     
-    // Convert to the format Grafana Cloud expects
-    const writeRequest = {
-      streams: [{
-        labels: `{job="pulse-flow"}`,
-        entries: [{
-          timestamp: Date.now() * 1000000, // Convert to nanoseconds
-          line: JSON.stringify(metrics)
-        }]
-      }]
-    };
+    // Compress the metrics data
+    const compressedPayload = await snappy.compress(Buffer.from(metricsData));
 
-    await axios.post(metricsConfig.pushUrl!, writeRequest, {
+    // Push to Grafana Cloud
+    await axios.post(metrics.pushUrl!, compressedPayload, {
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`,
-        'X-Scope-OrgID': process.env.GRAFANA_USERNAME
-      },
-      timeout: 30000
+        'Content-Type': 'application/x-protobuf',
+        'Content-Encoding': 'snappy',
+        'X-Prometheus-Remote-Write-Version': '0.1.0',
+        'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`
+      }
     });
+
+    console.log('Metrics pushed successfully');
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Metrics push failed:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        url: metricsConfig.pushUrl,
-        headers: {
-          ...error.response?.config?.headers,
-          Authorization: '***'
-        }
-      });
-    } else {
-      console.error('Metrics push failed:', error);
-    }
-    errorCounter.inc({ type: 'metrics_push' });
+    console.error('Metrics push failed:', error);
+    throw error;
   }
 }
 
