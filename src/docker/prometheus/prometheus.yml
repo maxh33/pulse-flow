@@ -12,12 +12,8 @@ scrape_configs:
 
 remote_write:
   - url: "${GRAFANA_PUSH_URL}"
-    headers:
-      X-Scope-OrgID: "${GRAFANA_USERNAME}"
     authorization:
-      type: Bearer
       credentials: "${GRAFANA_API_KEY}"
     write_relabel_configs:
       - source_labels: [__name__]
         regex: 'pulse_flow_.+'
-        action: keep
