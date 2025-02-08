@@ -1,7 +1,6 @@
 import client, { Counter, Registry, Gauge } from 'prom-client';
 import { Express } from 'express';
 import axios from 'axios';
-import snappy from 'snappy';
 import { metricsConfig } from '../config/metrics.config';
 
 // Create registry
@@ -40,33 +39,12 @@ export const engagementGauge = new Gauge({
 // Push metrics to Grafana Cloud
 export async function pushMetrics(): Promise<void> {
   try {
-    // Get metrics in Prometheus format
     const metrics = await register.metrics();
-    
-    // Convert to Protocol Buffers format
-    const timestamp = Date.now();
-    const metricLines = metrics.split('\n').filter(line => line && !line.startsWith('#'));
-    
-    const writeRequest = {
-      timeseries: metricLines.map(line => {
-        const [name, value] = line.split(' ');
-        return {
-          labels: [{ name: '__name__', value: name }],
-          samples: [{ value: parseFloat(value), timestamp }]
-        };
-      })
-    };
 
-    // Compress the data
-    const compressed = await snappy.compress(Buffer.from(JSON.stringify(writeRequest)));
-
-    await axios.post(metricsConfig.pushUrl!, compressed, {
+    await axios.post(metricsConfig.pushUrl!, metrics, {
       headers: {
-        'Content-Type': 'application/x-protobuf',
-        'Content-Encoding': 'snappy',
-        'X-Prometheus-Remote-Write-Version': '0.1.0',
-        'Authorization': `Bearer ${metricsConfig.apiKey}`,
-        'X-Scope-OrgID': process.env.GRAFANA_USERNAME
+        'Content-Type': register.contentType,
+        'Authorization': process.env.GRAFANA_API_KEY
       },
       timeout: 30000
     });
