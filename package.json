@@ -13,7 +13,8 @@
     "docker:build": "docker-compose -f docker-compose.prod.yml build",
     "verify:mongodb": "ts-node src/scripts/verify-mongodb.ts",
     "verify:deployment": "ts-node src/scripts/verify-deployment.ts",
-    "verify:grafana": "ts-node src/scripts/verify-grafana.ts"
+    "verify:grafana": "ts-node src/scripts/verify-grafana.ts",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -44,6 +45,13 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@typescript-eslint/eslint-plugin": "^8.23.0",
+    "@typescript-eslint/parser": "^8.23.0",
+    "eslint": "^9.20.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-import": "^2.31.0",
+    "globals": "^15.14.0",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5"
   }

@@ -2,11 +2,10 @@ import axios from 'axios';
 import { z } from 'zod';
 import snappy from 'snappy';
 import { loadEnv } from './load-env';
-import { registry } from '../config/metrics.config';
 import * as protobuf from 'protobufjs';
 import { createTweetData } from '../factories/tweet.factory';
 import { TweetData } from '../models/tweet';
-import { Registry } from 'prom-client';
+
 
 // Load environment variables before validation
 loadEnv();

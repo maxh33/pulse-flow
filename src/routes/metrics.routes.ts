@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { register } from '../monitoring/metrics';
-import { Registry } from 'prom-client';
 
 const router = Router();
 

@@ -1,4 +1,4 @@
-import client, { Counter, Registry, Gauge } from 'prom-client';
+import client, { Counter, Gauge } from 'prom-client';
 import { Express } from 'express';
 import axios from 'axios';
 import * as metrics from '../config/metrics.config';
