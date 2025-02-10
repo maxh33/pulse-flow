@@ -2,10 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { connectDB } from './config/mongodb.config';
-import { setupMetrics } from './monitoring/metrics';
+import { setupMetrics, pushMetrics } from './monitoring/metrics';
 import { healthRoutes } from './routes/health.routes';
 import { pingRoutes } from './routes/ping.routes';
 import { errorHandler } from './middleware/errorHandler';
+import { startMetricsScheduler } from './scripts/metrics-scheduler';
 
 const app = express();
 
@@ -26,21 +27,60 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 3000;
-const startServer = async () => {
+let server: any;
+let metricsInterval: NodeJS.Timeout;
+
+async function startServer() {
   try {
     // Connect to MongoDB
     await connectDB();
     console.log('MongoDB Connected...');
 
     // Start Express server
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+
+    // Start metrics collection
+    metricsInterval = setInterval(async () => {
+      try {
+        await pushMetrics();
+      } catch (error) {
+        console.error('Metrics push failed:', error);
+      }
+    }, parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'));
+
+    // Graceful shutdown
+    const shutdown = async (signal: string) => {
+      console.log(`${signal} received. Starting graceful shutdown...`);
+      
+      // Clear metrics interval
+      clearInterval(metricsInterval);
+      
+      // Close server
+      server.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
+      });
+
+      // Force close after timeout
+      setTimeout(() => {
+        console.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+      }, 10000);
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+
+    // Start metrics scheduler
+    startMetricsScheduler();
+
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('Server startup failed:', error);
     process.exit(1);
   }
-};
+}
 
 startServer();
 

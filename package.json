@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node dist/index.js",
+    "start:prod": "node dist/index.js",
     "build": "tsc",
     "dev": "ts-node src/index.ts",
     "test": "jest",
@@ -11,16 +12,24 @@
     "docker:prod": "docker-compose -f docker-compose.prod.yml up -d",
     "docker:build": "docker-compose -f docker-compose.prod.yml build",
     "verify:mongodb": "ts-node src/scripts/verify-mongodb.ts",
-    "verify:deployment": "ts-node src/scripts/verify-deployment.ts"
+    "verify:deployment": "ts-node src/scripts/verify-deployment.ts",
+    "verify:grafana": "ts-node src/scripts/verify-grafana.ts",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@opentelemetry/otlp-transformer": "^0.57.1",
+    "@types/axios": "^0.14.0",
+    "@types/chance": "^1.1.6",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.10",
-    "@types/cors": "^2.8.17",
+    "@types/snappy": "^6.0.0",
+    "axios": "^1.6.2",
+    "chance": "^1.1.11",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -29,15 +38,20 @@
     "mongodb": "^6.13.0",
     "mongoose": "^8.9.5",
     "prom-client": "^14.2.0",
+    "protobufjs": "^7.4.0",
+    "snappy": "^7.2.2",
     "typescript": "^5.7.3",
-    "zod": "^3.24.1",
-    "axios": "^1.6.2",
-    "@types/axios": "^0.14.0",
-    "chance": "^1.1.11",
-    "@types/chance": "^1.1.6"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@typescript-eslint/eslint-plugin": "^8.23.0",
+    "@typescript-eslint/parser": "^8.23.0",
+    "eslint": "^9.20.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-import": "^2.31.0",
+    "globals": "^15.14.0",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5"
   }

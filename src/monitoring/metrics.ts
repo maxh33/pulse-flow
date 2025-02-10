@@ -1,101 +1,210 @@
-import client, { Counter, Registry, Gauge, Histogram } from 'prom-client';
+import client, { Counter, Gauge } from 'prom-client';
 import { Express } from 'express';
-import { grafanaConfig } from '../config/grafana.config';
-import helmet from 'helmet';
-import { z } from 'zod';
+import axios from 'axios';
+import * as metrics from '../config/metrics.config';
+import snappy from 'snappy';
+import * as protobuf from 'protobufjs';
+import { registry } from '../config/metrics.config';
 
-// Setup Grafana metrics
-const metrics = new Registry();
-metrics.setDefaultLabels(grafanaConfig.metrics.defaultLabels);
+// Create registry
+export const register = new client.Registry();
+
+// Initialize metrics with default labels
+register.setDefaultLabels(metrics.defaultLabels);
 
 // Initialize default metrics
 client.collectDefaultMetrics({ 
-  register: metrics,
-  prefix: grafanaConfig.metrics.prefix,
-  gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5]
+  register,
+  prefix: metrics.prefix 
 });
 
-// Tweet processing metrics
-export const tweetCounter = new Counter({
-  name: `${grafanaConfig.metrics.prefix}tweets_processed_total`,
-  help: 'Total number of processed tweets',
-  labelNames: ['status'],
-  registers: [metrics]
-});
+// Export metrics
+export const {
+  tweetCounter,
+  engagementMetrics,
+  sentimentCounter,
+  platformCounter
+} = metrics.metrics;
 
-// Engagement metrics
-export const engagementGauge = new Gauge({
-  name: `${grafanaConfig.metrics.prefix}tweet_engagement`,
-  help: 'Tweet engagement metrics',
-  labelNames: ['type'],
-  registers: [metrics]
-});
-
-// Error counter
 export const errorCounter = new Counter({
-  name: `${grafanaConfig.metrics.prefix}errors_total`,
+  name: `${metrics.prefix}errors_total`,
   help: 'Total number of errors',
   labelNames: ['type'],
-  registers: [metrics]
+  registers: [register]
 });
 
-// Business metrics
-export const transactionVolume = new Gauge({
-  name: `${grafanaConfig.metrics.prefix}transaction_volume`,
-  help: 'Transaction volume',
-  registers: [metrics]
+export const engagementGauge = new Gauge({
+  name: 'tweet_engagement',
+  help: 'Current engagement metrics',
+  labelNames: ['type'],
+  registers: [register]
 });
 
-export const responseTime = new Histogram({
-  name: `${grafanaConfig.metrics.prefix}response_time`,
-  help: 'Response time in seconds',
-  buckets: [0.1, 0.5, 1, 2, 5],
-  registers: [metrics]
-});
+// Sanitize metric names to be Prometheus/Mimir compliant
+function sanitizeMetricName(name: string): string {
+  // Remove any non-alphanumeric characters except underscores
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/__+/g, '_')
+    .replace(/^[^a-z_]/, '_');
+}
 
-export const errorRate = new Counter({
-  name: `${grafanaConfig.metrics.prefix}error_rate`,
-  help: 'Error rate',
-  registers: [metrics]
-});
+function createProtobufPayload(metricsData: string) {
+  // Sanitize and validate metric names
+  const sanitizedMetricLines = metricsData
+    .split('\n')
+    .map(line => {
+      const parts = line.split(' ');
+      if (parts.length >= 2) {
+        parts[0] = sanitizeMetricName(parts[0]);
+        return parts.join(' ');
+      }
+      return line;
+    })
+    .filter(line => line.trim() && !line.startsWith('#'));
 
-// Request timeout and error handling
-export const setupMetrics = async (app: Express) => {
-  // Add basic security headers
-  app.use(helmet());
+  // Create a simple Protobuf message structure
+  const root = protobuf.Root.fromJSON({
+    nested: {
+      prometheus: {
+        nested: {
+          WriteRequest: {
+            fields: {
+              timeseries: {
+                rule: 'repeated',
+                type: 'TimeSeries',
+                id: 1
+              }
+            }
+          },
+          TimeSeries: {
+            fields: {
+              labels: {
+                rule: 'repeated',
+                type: 'Label',
+                id: 1
+              },
+              samples: {
+                rule: 'repeated',
+                type: 'Sample',
+                id: 2
+              }
+            }
+          },
+          Label: {
+            fields: {
+              name: {
+                type: 'string',
+                id: 1
+              },
+              value: {
+                type: 'string',
+                id: 2
+              }
+            }
+          },
+          Sample: {
+            fields: {
+              value: {
+                type: 'double',
+                id: 1
+              },
+              timestamp: {
+                type: 'int64',
+                id: 2
+              }
+            }
+          }
+        }
+      }
+    }
+  });
 
-  // Metrics endpoint with basic auth
-  app.get(grafanaConfig.metrics.path, async (req, res) => {
+  const WriteRequest = root.lookupType('prometheus.WriteRequest');
+  
+  // Convert metrics to TimeSeries
+  const timeseries = sanitizedMetricLines.map(line => {
+    const [metricName, value, timestamp] = line.split(' ');
+    
+    return {
+      labels: [
+        { name: '__name__', value: metricName },
+        { name: 'app', value: 'pulse_flow' },
+        { name: 'environment', value: process.env.NODE_ENV || 'development' }
+      ],
+      samples: [{
+        value: parseFloat(value),
+        timestamp: parseInt(timestamp) || Date.now()
+      }]
+    };
+  });
+
+  // Create and verify the payload
+  const payload = { timeseries };
+  const errMsg = WriteRequest.verify(payload);
+  if (errMsg) {
+    console.error('Invalid payload:', errMsg);
+    throw new Error('Invalid metrics payload');
+  }
+
+  return WriteRequest.encode(payload).finish();
+}
+
+// Push metrics to Grafana Cloud
+export async function pushMetrics() {
+  try {
+    // Create Protobuf payload from metrics
+    const metricsData = await registry.metrics();
+    const protobufPayload = createProtobufPayload(metricsData);
+    
+    // Compress the metrics data
+    const compressedPayload = await snappy.compress(Buffer.from(protobufPayload));
+
+    // Push to Grafana Cloud with comprehensive error handling
+    await axios.post(metrics.pushUrl!, compressedPayload, {
+      auth: {
+        username: process.env.GRAFANA_USERNAME!,
+        password: process.env.GRAFANA_API_KEY!
+      },
+      headers: {
+        'Content-Type': 'application/x-protobuf',
+        'Content-Encoding': 'snappy',
+        'X-Prometheus-Remote-Write-Version': '0.1.0',
+        'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`
+      },
+      validateStatus: (status) => status === 200 || status === 204
+    });
+
+    console.log('Metrics pushed successfully');
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.error('Metrics push failed:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+    } else {
+      console.error('Unexpected metrics push error:', error);
+    }
+    
+    // Optionally increment an error metric
+    errorCounter.inc({ type: 'metrics_push_failure' });
+    
+    // Re-throw to allow caller to handle
+    throw error;
+  }
+}
+
+// Setup metrics endpoint
+export const setupMetrics = (app: Express): void => {
+  app.get('/metrics', async (req, res) => {
     try {
-      res.set('Content-Type', metrics.contentType);
-      const metricsData = await metrics.metrics();
-      res.send(metricsData);
+      res.set('Content-Type', register.contentType);
+      const metrics = await register.metrics();
+      res.end(metrics);
     } catch (error) {
-      console.error('Metrics collection error:', error);
-      errorCounter.inc({ type: 'metrics_collection' });
-      res.status(500).send('Error collecting metrics');
+      res.status(500).end(error instanceof Error ? error.message : 'Unknown error');
     }
   });
 };
-
-// Environment validation schema
-export const EnvSchema = z.object({
-  MONGODB_URI: z.string().url(),
-  NODE_ENV: z.enum(['development', 'production']),
-  API_KEY: z.string().min(32)
-});
-
-// Tweet validation schema
-export const TweetSchema = z.object({
-  content: z.string().max(280),
-  user: z.string(),
-  metrics: z.object({
-    retweets: z.number().min(0),
-    likes: z.number().min(0),
-    comments: z.number().min(0)
-  }),
-  sentiment: z.enum(['positive', 'neutral', 'negative']),
-  platform: z.enum(['web', 'android', 'ios'])
-});
-
-export { metrics };

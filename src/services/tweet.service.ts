@@ -5,23 +5,40 @@ import * as metrics from '../monitoring/metrics';
 
 
 export class TweetService {
-  async createTweet(tweetData: any) {
+  async createTweet(tweetData: TweetData) {
     try {
       // Store in MongoDB
       const tweet = await TweetModel.create(tweetData);
       
       // Track tweet creation
-      metrics.tweetCounter.inc({ status: 'created' });
+      metrics.tweetCounter.inc({
+        status: 'created',
+        platform: tweet.platform,
+        sentiment: tweet.sentiment
+      });
       
       // Track engagement metrics
-      metrics.engagementGauge.set({ type: 'likes' }, tweet.metrics.likes);
-      metrics.engagementGauge.set({ type: 'retweets' }, tweet.metrics.retweets);
-      metrics.engagementGauge.set({ type: 'comments' }, tweet.metrics.comments);
+      metrics.engagementMetrics.set(
+        { type: 'likes', platform: tweet.platform, sentiment: tweet.sentiment }, 
+        tweet.metrics.likes
+      );
+      metrics.engagementMetrics.set(
+        { type: 'retweets', platform: tweet.platform, sentiment: tweet.sentiment }, 
+        tweet.metrics.retweets
+      );
+      metrics.engagementMetrics.set(
+        { type: 'comments', platform: tweet.platform, sentiment: tweet.sentiment }, 
+        tweet.metrics.comments
+      );
+
+      // Track sentiment and platform
+      metrics.sentimentCounter.inc({ sentiment: tweet.sentiment });
+      metrics.platformCounter.inc({ platform: tweet.platform });
 
       console.log('Tweet created:', tweet.tweetId);
       return tweet;
     } catch (error) {
-      metrics.errorCounter.inc({ type: 'tweet_creation' });
+      metrics.tweetCounter.inc({ status: 'failed' });
       throw error;
     }
   }
@@ -39,7 +56,7 @@ export class TweetService {
         results.push(result);
       } catch (error) {
         console.error('Failed to create tweet:', error);
-        metrics.errorCounter.inc({ type: 'batch_tweet_creation' });
+        metrics.tweetCounter.inc({ status: 'failed' });
       }
     }
     return results;

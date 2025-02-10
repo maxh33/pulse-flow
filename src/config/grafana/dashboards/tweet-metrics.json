@@ -1,0 +1,89 @@
+{
+  "dashboard": {
+    "title": "Tweet Metrics",
+    "tags": ["tweets", "application"],
+    "timezone": "browser",
+    "refresh": "10s",
+    "panels": [
+      {
+        "title": "Tweet Processing Rate",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(pulse_flow_tweet_processing_duration_seconds_count[5m]))",
+            "legendFormat": "Tweets processed per second"
+          }
+        ]
+      },
+      {
+        "title": "Tweet Processing Time",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(pulse_flow_tweet_processing_duration_seconds_sum[5m])) / sum(rate(pulse_flow_tweet_processing_duration_seconds_count[5m]))",
+            "legendFormat": "Average processing time"
+          }
+        ]
+      },
+      {
+        "title": "Tweet Sentiment Distribution",
+        "type": "gauge",
+        "gridPos": { "x": 0, "y": 8, "w": 8, "h": 8 },
+        "targets": [
+          {
+            "expr": "pulse_flow_tweet_sentiment_total{sentiment='positive'}",
+            "legendFormat": "Positive"
+          },
+          {
+            "expr": "pulse_flow_tweet_sentiment_total{sentiment='neutral'}",
+            "legendFormat": "Neutral"
+          },
+          {
+            "expr": "pulse_flow_tweet_sentiment_total{sentiment='negative'}",
+            "legendFormat": "Negative"
+          }
+        ]
+      },
+      {
+        "title": "Tweet Platform Distribution",
+        "type": "pie",
+        "gridPos": { "x": 8, "y": 8, "w": 8, "h": 8 },
+        "targets": [
+          {
+            "expr": "pulse_flow_tweet_platform_total{platform='web'}",
+            "legendFormat": "Web"
+          },
+          {
+            "expr": "pulse_flow_tweet_platform_total{platform='android'}",
+            "legendFormat": "Android"
+          },
+          {
+            "expr": "pulse_flow_tweet_platform_total{platform='ios'}",
+            "legendFormat": "iOS"
+          }
+        ]
+      },
+      {
+        "title": "Tweet Metrics",
+        "type": "graph",
+        "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(pulse_flow_tweet_metrics_total{type='likes'}[5m])",
+            "legendFormat": "Likes/sec"
+          },
+          {
+            "expr": "rate(pulse_flow_tweet_metrics_total{type='retweets'}[5m])",
+            "legendFormat": "Retweets/sec"
+          },
+          {
+            "expr": "rate(pulse_flow_tweet_metrics_total{type='comments'}[5m])",
+            "legendFormat": "Comments/sec"
+          }
+        ]
+      }
+    ]
+  }
+} 

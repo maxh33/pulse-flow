@@ -3,7 +3,7 @@
 # Remove existing network if it exists
 docker network rm pulse-flow_app_network || true
 
-# Create network with proper labels
+# Create new network with proper labels
 docker network create \
     --driver bridge \
     --label com.docker.compose.network=app_network \

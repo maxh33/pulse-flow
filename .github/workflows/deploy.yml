@@ -55,7 +55,9 @@ jobs:
           PORT=3000
           NODE_ENV=production
           MONGODB_URI=${{ secrets.MONGODB_URI }}
-          GRAFANA_CLOUD_URL=${{ secrets.GRAFANA_CLOUD_URL }}
+          GRAFANA_PUSH_URL=${{ secrets.GRAFANA_PUSH_URL }}
+          GRAFANA_PROMETHEUS_URL=${{ secrets.GRAFANA_PROMETHEUS_URL }}
+          GRAFANA_USERNAME=${{ secrets.GRAFANA_USERNAME }}
           GRAFANA_API_KEY=${{ secrets.GRAFANA_API_KEY }}
           EOL
 
@@ -63,7 +65,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile.prod
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
@@ -86,7 +88,9 @@ jobs:
           COMPOSE_PROJECT_NAME=pulse-flow docker-compose -f docker-compose.prod.yml up -d
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}
+          GRAFANA_PUSH_URL: ${{ secrets.GRAFANA_PUSH_URL }}
+          GRAFANA_PROMETHEUS_URL: ${{ secrets.GRAFANA_PROMETHEUS_URL }}
+          GRAFANA_USERNAME: ${{ secrets.GRAFANA_USERNAME }}
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
