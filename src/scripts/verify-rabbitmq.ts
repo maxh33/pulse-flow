@@ -13,7 +13,6 @@ import { errorCounter } from '../monitoring/metrics';
 // Environment validation schema
 const envSchema = z.object({
   RABBITMQ_URL: z.string(),
-  RABBITMQ_PASSWORD: z.string(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development')
 });
 

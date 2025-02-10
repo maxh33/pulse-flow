@@ -21,11 +21,25 @@ export const createRabbitMQConnection = async () => {
         'x-queue-type': 'classic',
         'x-max-length': rabbitMQConfig.limits.maxQueueLength,
         'x-max-age': '21d',  // Remove messages after 21 days
-        'x-overflow': 'reject-publish'
+        'x-overflow': 'reject-publish',
+        'x-message-ttl': 1000 * 60 * 60 * 24 * 7, // 7 days in milliseconds
+        'x-dead-letter-exchange': 'dlx.tweet_processing'
       }
     });
 
-    console.log('Successfully connected to RabbitMQ');
+    // Declare dead letter exchange and queue
+    await channel.assertExchange('dlx.tweet_processing', 'direct', { durable: true });
+    await channel.assertQueue('tweet_processing.dlq', {
+      durable: true,
+      arguments: {
+        'x-queue-type': 'classic',
+        'x-max-length': 1000,
+        'x-message-ttl': 1000 * 60 * 60 * 24 * 3 // 3 days
+      }
+    });
+    await channel.bindQueue('tweet_processing.dlq', 'dlx.tweet_processing', '');
+
+    console.log('Successfully connected to RabbitMQ and created queues');
     return { connection, channel };
   } catch (error) {
     console.error('RabbitMQ connection error:', error);
