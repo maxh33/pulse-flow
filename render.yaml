@@ -2,9 +2,7 @@ services:
   - type: web
     name: pulse-flow
     env: node
-    buildCommand: |
-      npm ci
-      npm run build
+    buildCommand: npm ci && npm run build
     startCommand: node dist/index.js
     envVars:
       - key: NODE_ENV
@@ -21,13 +19,40 @@ services:
         sync: false
       - key: PORT
         value: 3000
+      - key: RABBITMQ_URL
+        sync: false
+      - key: RABBITMQ_PASSWORD
+        sync: false
+      - key: METRICS_PUSH_INTERVAL
+        value: "60000"
     healthCheckPath: /healthz
     healthCheckTimeout: 5
     autoDeploy: true
     numInstances: 1
+    plan: starter
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+    sleepPreventionEnabled: true
+    sleepPreventionInterval: 1
+    gracefulShutdownTimeout: 5000
+    restartPolicyType: ON_FAILURE
+    restartPolicyMaxRetries: 3
     buildFilter:
       paths:
         - src/**/*.ts
         - package.json
         - package-lock.json
         - tsconfig.json
+  - type: worker
+    name: pulse-flow-heartbeat
+    env: node
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/scripts/heartbeat.js
+    envVars:
+      - key: APP_URL
+        value: https://pulse-flow.onrender.com
+      - key: HEARTBEAT_INTERVAL
+        value: 300000  # Reduced to 5 minutes
+    sleepPreventionEnabled: true
+    restartPolicyType: ALWAYS

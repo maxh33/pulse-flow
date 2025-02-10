@@ -43,6 +43,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - MONGODB_URI=${MONGODB_URI}
+      - RABBITMQ_URL=${RABBITMQ_URL}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
       interval: 30s

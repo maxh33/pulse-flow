@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - chore/simplify-project-architecture
+      - feat/rabbitMQ
 
 env:
   REGISTRY: ghcr.io
@@ -39,6 +39,18 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           NODE_ENV: production
 
+      - name: Set RabbitMQ Credentials
+        run: |
+          # Use localhost for GitHub Actions since we're running verification locally
+          echo "RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}" >> $GITHUB_ENV
+          echo "RABBITMQ_URL=amqp://pulse_flow_user:${{ secrets.RABBITMQ_PASSWORD }}@localhost:5672" >> $GITHUB_ENV
+
+      - name: Verify RabbitMQ Connection
+        run: npm run verify:rabbitmq
+        env:
+          RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
+          NODE_ENV: production
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -59,6 +71,8 @@ jobs:
           GRAFANA_PROMETHEUS_URL=${{ secrets.GRAFANA_PROMETHEUS_URL }}
           GRAFANA_USERNAME=${{ secrets.GRAFANA_USERNAME }}
           GRAFANA_API_KEY=${{ secrets.GRAFANA_API_KEY }}
+          RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}
+          METRICS_PUSH_INTERVAL=60000
           EOL
 
       - name: Build and push Docker image
@@ -92,6 +106,7 @@ jobs:
           GRAFANA_PROMETHEUS_URL: ${{ secrets.GRAFANA_PROMETHEUS_URL }}
           GRAFANA_USERNAME: ${{ secrets.GRAFANA_USERNAME }}
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+          RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Wait for app to start

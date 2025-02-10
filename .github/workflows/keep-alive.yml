@@ -1,0 +1,27 @@
+name: Keep Alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # Run every 10 minutes
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Application
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const axios = require('axios');
+            try {
+              const response = await axios.get('https://pulse-flow.onrender.com/ping');
+              console.log('Ping successful:', response.status);
+              if (response.status !== 200) {
+                throw new Error(`Unexpected status: ${response.status}`);
+              }
+            } catch (error) {
+              console.error('Ping failed:', error.message);
+              // Don't fail the workflow to avoid notifications
+              // but log the error for monitoring
+            } 

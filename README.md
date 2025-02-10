@@ -1,7 +1,8 @@
-# [Still Under Development] PulseFlow - Real-Time Social Media Analytics Platform
+# [Under Development] PulseFlow - Real-Time Social Media Analytics Platform
 
 ## Overview
-Backend for real-time data processing and visualization platform built with enterprise-grade technologies. This project demonstrates advanced data simulation, monitoring, and analytics capabilities using modern DevOps practices.
+
+PulseFlow is a backend platform designed for real-time data processing and visualization, leveraging enterprise-grade technologies. This project showcases advanced capabilities in data simulation, monitoring, and analytics, all built on modern DevOps practices
 
 ## Features
 - Real-time social media data processing
@@ -17,43 +18,47 @@ Backend for real-time data processing and visualization platform built with ente
 - **Database**: MongoDB with Mongoose ODM
 - **Containerization**: Docker & Docker Compose
 
-### Monitoring & Visualization
-- **Metrics**: Prometheus
-- **Dashboards**: Grafana
-- **Health Checks**: Custom endpoints with prometheus-client
+## Architecture Components
+- Microservices-based Design: Modular architecture for scalability and maintainability.
+- MongoDB Data Storage: Efficient and scalable data management.
+- Real-time Metrics Collection: Continuous monitoring of system performance.
+- Custom Dashboards: Visual insights through Grafana and MongoDB Charts.
+
+### Message Queue Integration:
+- RabbitMQ with CloudAMQP: Utilizes a managed RabbitMQ service for distributed message processing.
+- Configuration: Secure, encrypted connections with elastic scaling.
+- Key Features: Reliable message queuing, automatic message routing, and error handling with dead-letter queues.
+- Message Flow: Synthetic tweet data is generated, published to RabbitMQ, processed asynchronously, and stored in MongoDB.
 
 ### CI/CD & DevOps
 - **Continuous Integration**: GitHub Actions
 - **Container Registry**: GitHub Container Registry
 - **Container Orchestration**: Docker Compose
 
-### Architecture Components
-- Microservices-based design
-- MongoDB data storage
-- Real-time metrics collection
-- Custom dashboards
+## Monitoring Setup
 
-### Monitoring Setup
+
+- **Metrics**: Prometheus
+- **Dashboards**: Grafana
+- **Health Checks**: Custom endpoints with prometheus-client
+- **MongoDB Charts**: 
+
 The application exports metrics in Prometheus format and pushes them to Grafana Cloud. A local monitoring stack is also available through Docker Compose.
 
-#### Available Metrics
-- Tweet processing rate and duration
-- Sentiment analysis distribution
-- Platform usage statistics
-- Error rates and system health
-- API response times
-
 # Dashboards
+
+
+**![>> **SOON** ~~Project Demo Gif~~ <<](public/demo.gif)**
 
 ### Grafana Performance Dashboard
 ![Grafana Dashboard](public/GrafanaEx.png)
 
-**[>> View LIVE Grafana Dashboard HERE <<](https://maxh33.grafana.net/public-dashboards/2f5dd656ee264fd2ac6f13f1aa1b4004)**
+**[>> **SOON** ~~View LIVE Grafana Dashboard HERE~~ <<](https://maxh33.grafana.net/public-dashboards/2f5dd656ee264fd2ac6f13f1aa1b4004)**
 
 ## MongoDB Charts Dashboard
 ![MongoDB Charts Dashboard](public/MainMetrics.png)
 
-**[>> View LIVE MongoDB Charts Dashboard HERE <<](https://charts.mongodb.com/charts-project-0-tmkdyjw/public/dashboards/6798e048-db1e-4c24-85a6-e942bec5d15f)**
+**[>> **SOON** ~~View LIVE MongoDB Charts Dashboard HERE~~ <<](https://charts.mongodb.com/charts-project-0-tmkdyjw/public/dashboards/6798e048-db1e-4c24-85a6-e942bec5d15f)**
 
 
 ## Data Generation Methodology
@@ -81,24 +86,14 @@ The application exports metrics in Prometheus format and pushes them to Grafana 
 ### Disclaimer
 🚨 **Note**: All data is artificially generated and does not represent real social media interactions.
 
-## Deployment Infrastructure
+## Deployment Infrastructure Workflow:
 
-### Platform
-- **Hosting**: Render.com
-- **Deployment Type**: Web Service
-- **Continuous Deployment**: Enabled
-
-### Render.com Configuration
-- Automatic GitHub repository synchronization
-- Node.js runtime environment
-- Scalable web service infrastructure
-- Built-in environment variable management
-
-#### Deployment Workflow
-1. Code pushed to GitHub
-2. Render.com detects changes
-3. Automatic build and deployment
-4. Zero-downtime updates
+1. **Data Generation:** Synthetic tweets created with Chance.js.
+2. **Message Queuing:** Data published to RabbitMQ, ensuring reliable processing.
+3. **Data Storage:** Tweets stored in MongoDB for efficient access.
+4. **CI/CD:** Automated tests and deployment via GitHub Actions.
+5. **Hosting:** Application deployed on Render for scalability.
+6. **Monitoring:** Metrics collected and visualized in Grafana.
 
 ## Project Status & Quality Checks
 

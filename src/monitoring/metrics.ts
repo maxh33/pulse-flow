@@ -151,9 +151,33 @@ function createProtobufPayload(metricsData: string) {
   return WriteRequest.encode(payload).finish();
 }
 
-// Push metrics to Grafana Cloud
+// Add rate limiting
+let lastPushTime = 0;
+// Increase the minimum interval to better match Grafana's rate limits
+// 75 requests/s = 1 request every ~13.33ms, let's be conservative
+const _MIN_PUSH_INTERVAL = 60000; // Changed to 60 seconds (1 minute)
+const MAX_REQUESTS_PER_MINUTE = 60; // Keep well under the 75/s limit
+let requestsThisMinute = 0;
+
 export async function pushMetrics() {
   try {
+    const now = Date.now();
+    
+    // Reset counter each minute
+    if (now - lastPushTime >= 60000) {
+      requestsThisMinute = 0;
+      lastPushTime = now;
+    }
+
+    // Check if we're within rate limits
+    if (requestsThisMinute >= MAX_REQUESTS_PER_MINUTE) {
+      // Silent skip - don't log to avoid pollution
+      return;
+    }
+
+    // Increment counter before pushing
+    requestsThisMinute++;
+
     // Create Protobuf payload from metrics
     const metricsData = await registry.metrics();
     const protobufPayload = createProtobufPayload(metricsData);
@@ -161,7 +185,6 @@ export async function pushMetrics() {
     // Compress the metrics data
     const compressedPayload = await snappy.compress(Buffer.from(protobufPayload));
 
-    // Push to Grafana Cloud with comprehensive error handling
     await axios.post(metrics.pushUrl!, compressedPayload, {
       auth: {
         username: process.env.GRAFANA_USERNAME!,
@@ -176,23 +199,23 @@ export async function pushMetrics() {
       validateStatus: (status) => status === 200 || status === 204
     });
 
-    console.log('Metrics pushed successfully');
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Metrics push failed:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message
-      });
-    } else {
-      console.error('Unexpected metrics push error:', error);
+    // Only log successful pushes (reduce log pollution)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Metrics pushed successfully');
     }
-    
-    // Optionally increment an error metric
-    errorCounter.inc({ type: 'metrics_push_failure' });
-    
-    // Re-throw to allow caller to handle
-    throw error;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 429) {
+      // Silent handling of rate limit errors
+      const retryAfter = parseInt(error.response.headers['retry-after'] || '60');
+      lastPushTime = Date.now() + (retryAfter * 1000);
+    } else {
+      // Only log non-rate-limit errors
+      console.error('Metrics push failed:', {
+        status: axios.isAxiosError(error) ? error.response?.status : 'N/A',
+        message: error instanceof Error ? error.message : String(error)
+      });
+      errorCounter.inc({ type: 'metrics_push_failure' });
+    }
   }
 }
 

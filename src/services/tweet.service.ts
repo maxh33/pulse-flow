@@ -1,8 +1,15 @@
 import mongoose from 'mongoose';
 import { TweetData, TweetModel } from '../models/tweet';
 import * as metrics from '../monitoring/metrics';
+import { Counter } from 'prom-client';
 
-
+// Update the tweetCounter definition in metrics.config.ts
+export const tweetCounter = new Counter({
+  name: 'pulse_flow_tweets_total',
+  help: 'Total number of tweets',
+  labelNames: ['status', 'platform', 'sentiment'], // Add all required labels
+  registers: [metrics.register]
+});
 
 export class TweetService {
   async createTweet(tweetData: TweetData) {
@@ -11,7 +18,7 @@ export class TweetService {
       const tweet = await TweetModel.create(tweetData);
       
       // Track tweet creation
-      metrics.tweetCounter.inc({
+      tweetCounter.inc({
         status: 'created',
         platform: tweet.platform,
         sentiment: tweet.sentiment
@@ -38,7 +45,7 @@ export class TweetService {
       console.log('Tweet created:', tweet.tweetId);
       return tweet;
     } catch (error) {
-      metrics.tweetCounter.inc({ status: 'failed' });
+      console.error('Error processing tweet:', error);
       throw error;
     }
   }
@@ -56,7 +63,7 @@ export class TweetService {
         results.push(result);
       } catch (error) {
         console.error('Failed to create tweet:', error);
-        metrics.tweetCounter.inc({ status: 'failed' });
+        tweetCounter.inc({ status: 'failed' });
       }
     }
     return results;

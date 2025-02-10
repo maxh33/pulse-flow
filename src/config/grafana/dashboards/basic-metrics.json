@@ -53,7 +53,22 @@
             "legendFormat": "Heap Used"
           }
         ]
+      },
+      {
+        "title": "Application Metrics",
+        "targets": [
+          {
+            "expr": "pulse_flow_up{instance='pulse-flow-prod'}",
+            "legendFormat": "Status"
+          }
+        ]
       }
     ]
+  },
+  "meta": {
+    "type": "db",
+    "canShare": true,
+    "canStar": true,
+    "provisioned": false
   }
 } 
