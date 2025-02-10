@@ -1,8 +1,8 @@
-import express from 'express';
+import { Router } from 'express';
 import { register } from '../monitoring/metrics';
 import { Registry } from 'prom-client';
 
-const router = express.Router();
+const router = Router();
 
 router.get('/metrics', async (req, res) => {
   try {

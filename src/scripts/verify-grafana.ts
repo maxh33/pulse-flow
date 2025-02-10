@@ -6,6 +6,7 @@ import { registry } from '../config/metrics.config';
 import * as protobuf from 'protobufjs';
 import { createTweetData } from '../factories/tweet.factory';
 import { TweetData } from '../models/tweet';
+import { Registry } from 'prom-client';
 
 // Load environment variables before validation
 loadEnv();
@@ -187,4 +188,4 @@ async function verifyGrafanaConnection() {
   }
 }
 
-verifyGrafanaConnection(); 
+export default verifyGrafanaConnection; 

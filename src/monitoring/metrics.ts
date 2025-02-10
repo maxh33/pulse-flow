@@ -4,7 +4,6 @@ import axios from 'axios';
 import * as metrics from '../config/metrics.config';
 import snappy from 'snappy';
 import * as protobuf from 'protobufjs';
-import { createTweetData } from '../factories/tweet.factory';
 import { registry } from '../config/metrics.config';
 
 // Create registry
