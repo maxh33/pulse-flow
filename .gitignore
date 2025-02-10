@@ -58,3 +58,13 @@ docs/
 docs/drafts/
 *.draft.md
 
+# Metrics and monitoring
+*.metrics
+*.prom
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Render deployment
+.render/
+

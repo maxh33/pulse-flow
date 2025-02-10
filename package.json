@@ -14,7 +14,8 @@
     "verify:mongodb": "ts-node src/scripts/verify-mongodb.ts",
     "verify:deployment": "ts-node src/scripts/verify-deployment.ts",
     "verify:grafana": "ts-node src/scripts/verify-grafana.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "start:heartbeat": "node dist/scripts/heartbeat.js"
   },
   "keywords": [],
   "author": "",
