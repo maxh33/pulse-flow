@@ -30,6 +30,8 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 let server: any;
 let metricsInterval: NodeJS.Timeout;
+let restartAttempts = 0;
+const MAX_RESTART_ATTEMPTS = 3;
 
 async function startServer() {
   try {
@@ -94,9 +96,36 @@ async function startServer() {
     // Start metrics scheduler
     startMetricsScheduler();
 
+    // Add restart monitoring
+    server.on('error', async (error: Error) => {
+      console.error('Server error:', error);
+      if (restartAttempts < MAX_RESTART_ATTEMPTS) {
+        restartAttempts++;
+        console.log(`Attempting restart ${restartAttempts}/${MAX_RESTART_ATTEMPTS}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        startServer();
+      } else {
+        console.error('Max restart attempts reached');
+        process.exit(1);
+      }
+    });
+
+    // Reset restart attempts on successful start
+    server.once('listening', () => {
+      restartAttempts = 0;
+      console.log('Server successfully started');
+    });
+
   } catch (error) {
     console.error('Server startup failed:', error);
-    process.exit(1);
+    if (restartAttempts < MAX_RESTART_ATTEMPTS) {
+      restartAttempts++;
+      console.log(`Attempting restart ${restartAttempts}/${MAX_RESTART_ATTEMPTS}`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      startServer();
+    } else {
+      process.exit(1);
+    }
   }
 }
 

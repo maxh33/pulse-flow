@@ -20,7 +20,7 @@ services:
       - key: PORT
         value: 3000
     healthCheckPath: /healthz
-    healthCheckTimeout: 10
+    healthCheckTimeout: 5
     autoDeploy: true
     numInstances: 1
     plan: starter
@@ -28,8 +28,8 @@ services:
       minInstances: 1
       maxInstances: 1
     sleepPreventionEnabled: true
-    sleepPreventionInterval: 5
-    gracefulShutdownTimeout: 10000
+    sleepPreventionInterval: 1
+    gracefulShutdownTimeout: 5000
     restartPolicyType: ON_FAILURE
     restartPolicyMaxRetries: 3
     buildFilter:
