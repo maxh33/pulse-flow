@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - chore/simplify-project-architecture
+      - feat/rabbitMQ
 
 env:
   REGISTRY: ghcr.io
