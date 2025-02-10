@@ -7,6 +7,7 @@ import { healthRoutes } from './routes/health.routes';
 import { pingRoutes } from './routes/ping.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { startMetricsScheduler } from './scripts/metrics-scheduler';
+import mongoose from 'mongoose';
 
 const app = express();
 
@@ -50,28 +51,45 @@ async function startServer() {
       }
     }, parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'));
 
-    // Graceful shutdown
+    // Enhanced graceful shutdown
     const shutdown = async (signal: string) => {
       console.log(`${signal} received. Starting graceful shutdown...`);
+      
+      // Set a flag to stop accepting new requests
+      app.disable('accept-connections');
       
       // Clear metrics interval
       clearInterval(metricsInterval);
       
-      // Close server
-      server.close(() => {
-        console.log('HTTP server closed');
-        process.exit(0);
-      });
+      try {
+        // Wait for existing requests to complete (max 5 seconds)
+        const shutdownTimeout = setTimeout(() => {
+          console.error('Forced shutdown after timeout');
+          process.exit(1);
+        }, 5000);
 
-      // Force close after timeout
-      setTimeout(() => {
-        console.error('Could not close connections in time, forcefully shutting down');
+        // Close server gracefully
+        await new Promise<void>((resolve) => {
+          server.close(() => {
+            clearTimeout(shutdownTimeout);
+            resolve();
+          });
+        });
+
+        // Disconnect from MongoDB
+        await mongoose.disconnect();
+        
+        console.log('Graceful shutdown completed');
+        process.exit(0);
+      } catch (error) {
+        console.error('Error during shutdown:', error);
         process.exit(1);
-      }, 10000);
+      }
     };
 
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
+    // Use once() to prevent multiple handlers
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
+    process.once('SIGINT', () => shutdown('SIGINT'));
 
     // Start metrics scheduler
     startMetricsScheduler();

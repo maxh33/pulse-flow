@@ -20,13 +20,18 @@ services:
       - key: PORT
         value: 3000
     healthCheckPath: /healthz
-    healthCheckTimeout: 5
+    healthCheckTimeout: 10
     autoDeploy: true
     numInstances: 1
     plan: starter
     scaling:
       minInstances: 1
       maxInstances: 1
+    sleepPreventionEnabled: true
+    sleepPreventionInterval: 5
+    gracefulShutdownTimeout: 10000
+    restartPolicyType: ON_FAILURE
+    restartPolicyMaxRetries: 3
     buildFilter:
       paths:
         - src/**/*.ts
@@ -42,4 +47,6 @@ services:
       - key: APP_URL
         value: https://pulse-flow.onrender.com
       - key: HEARTBEAT_INTERVAL
-        value: 600000  # 10 minutes in milliseconds
+        value: 300000  # Reduced to 5 minutes
+    sleepPreventionEnabled: true
+    restartPolicyType: ALWAYS
