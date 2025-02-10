@@ -153,17 +153,30 @@ function createProtobufPayload(metricsData: string) {
 
 // Add rate limiting
 let lastPushTime = 0;
-const MIN_PUSH_INTERVAL = 30000; // Minimum 30 seconds between pushes
+// Increase the minimum interval to better match Grafana's rate limits
+// 75 requests/s = 1 request every ~13.33ms, let's be conservative
+const _MIN_PUSH_INTERVAL = 60000; // Changed to 60 seconds (1 minute)
+const MAX_REQUESTS_PER_MINUTE = 60; // Keep well under the 75/s limit
+let requestsThisMinute = 0;
 
 export async function pushMetrics() {
   try {
-    // Rate limiting check
     const now = Date.now();
-    if (now - lastPushTime < MIN_PUSH_INTERVAL) {
-      console.log('Skipping metrics push due to rate limiting');
+    
+    // Reset counter each minute
+    if (now - lastPushTime >= 60000) {
+      requestsThisMinute = 0;
+      lastPushTime = now;
+    }
+
+    // Check if we're within rate limits
+    if (requestsThisMinute >= MAX_REQUESTS_PER_MINUTE) {
+      // Silent skip - don't log to avoid pollution
       return;
     }
-    lastPushTime = now;
+
+    // Increment counter before pushing
+    requestsThisMinute++;
 
     // Create Protobuf payload from metrics
     const metricsData = await registry.metrics();
@@ -172,8 +185,7 @@ export async function pushMetrics() {
     // Compress the metrics data
     const compressedPayload = await snappy.compress(Buffer.from(protobufPayload));
 
-    // Push to Grafana Cloud with retry logic
-    const response = await axios.post(metrics.pushUrl!, compressedPayload, {
+    await axios.post(metrics.pushUrl!, compressedPayload, {
       auth: {
         username: process.env.GRAFANA_USERNAME!,
         password: process.env.GRAFANA_API_KEY!
@@ -184,32 +196,26 @@ export async function pushMetrics() {
         'X-Prometheus-Remote-Write-Version': '0.1.0',
         'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`
       },
-      // Add retry-after handling
-      validateStatus: (status) => {
-        if (status === 429) {
-          const retryAfter = parseInt(response?.headers?.['retry-after'] || '60');
-          lastPushTime = now + (retryAfter * 1000);
-          return false;
-        }
-        return status === 200 || status === 204;
-      }
+      validateStatus: (status) => status === 200 || status === 204
     });
 
-    console.log('Metrics pushed successfully');
+    // Only log successful pushes (reduce log pollution)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Metrics pushed successfully');
+    }
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 429) {
+      // Silent handling of rate limit errors
       const retryAfter = parseInt(error.response.headers['retry-after'] || '60');
-      console.log(`Rate limited. Will retry after ${retryAfter} seconds`);
       lastPushTime = Date.now() + (retryAfter * 1000);
     } else {
+      // Only log non-rate-limit errors
       console.error('Metrics push failed:', {
         status: axios.isAxiosError(error) ? error.response?.status : 'N/A',
-        data: axios.isAxiosError(error) ? error.response?.data : null,
         message: error instanceof Error ? error.message : String(error)
       });
+      errorCounter.inc({ type: 'metrics_push_failure' });
     }
-    
-    errorCounter.inc({ type: 'metrics_push_failure' });
   }
 }
 

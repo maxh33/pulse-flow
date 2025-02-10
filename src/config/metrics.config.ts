@@ -19,7 +19,7 @@ export const metrics = {
   tweetCounter: new client.Counter({
     name: 'pulse_flow_tweets_total',
     help: 'Total number of tweets',
-    labelNames: ['status', 'platform', 'sentiment'],
+    labelNames: ['status'],
     registers: [registry]
   }),
   engagementMetrics: new client.Gauge({
@@ -52,9 +52,9 @@ export const requestCounter = new client.Counter({
 });
 
 export const defaultLabels = {
-  app: 'pulse-flow',
-  environment: process.env.NODE_ENV || 'development',
-  instance: process.env.HOSTNAME || 'unknown'
+  app: 'pulse_flow',
+  environment: 'production',
+  instance: 'pulse-flow-prod'
 };
 
 export const prefix = 'pulse_flow_';
@@ -65,9 +65,9 @@ export const metricsConfig = {
   pushUrl,
   prefix,
   defaultLabels: {
-    app: 'pulse-flow',
-    environment: process.env.NODE_ENV || 'development',
-    instance: process.env.HOSTNAME || 'unknown'
+    app: 'pulse_flow',
+    environment: 'production',
+    instance: 'pulse-flow-prod'
   },
   pushInterval: parseInt(process.env.METRICS_PUSH_INTERVAL || '60000'),
   compression: {
