@@ -14,6 +14,7 @@
     "verify:mongodb": "ts-node src/scripts/verify-mongodb.ts",
     "verify:deployment": "ts-node src/scripts/verify-deployment.ts",
     "verify:grafana": "ts-node src/scripts/verify-grafana.ts",
+    "verify:rabbitmq:local": "cross-env NODE_ENV=development ts-node src/scripts/verify-rabbitmq.ts",
     "verify:rabbitmq": "cross-env NODE_ENV=production ts-node src/scripts/verify-rabbitmq.ts",
     "prepare": "husky",
     "start:heartbeat": "node dist/scripts/heartbeat.js"

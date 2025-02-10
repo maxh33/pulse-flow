@@ -1,13 +1,24 @@
-import amqp from 'amqplib';
+import amqp, { Connection, Channel } from 'amqplib';
 import { TweetData } from '../models/tweet';
 
 export class MessageQueue {
-  private connection: amqp.Connection;
-  private channel: amqp.Channel;
+  private connection!: Connection;
+  private channel!: Channel;
+  private readonly url: string;
 
-  async connect(url: string) {
-    this.connection = await amqp.connect(url);
-    this.channel = await this.connection.createChannel();
+  constructor(url: string) {
+    this.url = url;
+  }
+
+  async connect() {
+    try {
+      this.connection = await amqp.connect(this.url);
+      this.channel = await this.connection.createChannel();
+      console.log('Connected to RabbitMQ');
+    } catch (error) {
+      console.error('Failed to connect to RabbitMQ:', error);
+      throw error;
+    }
   }
 
   async publishTweet(tweet: TweetData) {
@@ -27,5 +38,14 @@ export class MessageQueue {
         this.channel.ack(msg);
       }
     });
+  }
+
+  async close() {
+    if (this.channel) {
+      await this.channel.close();
+    }
+    if (this.connection) {
+      await this.connection.close();
+    }
   }
 }

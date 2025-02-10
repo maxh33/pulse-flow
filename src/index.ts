@@ -8,6 +8,7 @@ import { pingRoutes } from './routes/ping.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { startMetricsScheduler } from './scripts/metrics-scheduler';
 import mongoose from 'mongoose';
+import { MessageQueue } from './services/message-queue';
 
 const app = express();
 
@@ -38,6 +39,26 @@ async function startServer() {
     // Connect to MongoDB
     await connectDB();
     console.log('MongoDB Connected...');
+
+    // Add RabbitMQ connection with retry
+    const messageQueue = new MessageQueue(process.env.RABBITMQ_URL!);
+    let retries = 0;
+    const MAX_RETRIES = 5;
+
+    while (retries < MAX_RETRIES) {
+      try {
+        await messageQueue.connect();
+        console.log('RabbitMQ Connected...');
+        break;
+      } catch (error) {
+        retries++;
+        console.error(`RabbitMQ connection attempt ${retries} failed:`, error);
+        if (retries === MAX_RETRIES) {
+          throw new Error('Failed to connect to RabbitMQ after max retries');
+        }
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s between retries
+      }
+    }
 
     // Start Express server
     server = app.listen(PORT, () => {

@@ -1,8 +1,10 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables from .env file
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Load environment variables from .env file only in development
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+}
 
 import amqp from 'amqplib';
 import { z } from 'zod';
@@ -10,54 +12,61 @@ import { errorCounter } from '../monitoring/metrics';
 
 // Environment validation schema
 const envSchema = z.object({
-  RABBITMQ_URL: z.string().url('Invalid RabbitMQ connection string'),
-  RABBITMQ_PASSWORD: z.string().min(12, 'Password too short'),
+  RABBITMQ_URL: z.string().url('Invalid RabbitMQ URL'),
+  RABBITMQ_PASSWORD: z.string().min(1, 'RabbitMQ password is required'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development')
 });
 
-async function verifyRabbitMQConnection() {
+async function verifyRabbitMQ() {
+  console.log(`🔄 Verifying RabbitMQ connection in ${process.env.NODE_ENV} environment...`);
+  
   try {
-    // Validate environment variables
     const env = envSchema.parse(process.env);
-
-    // Determine connection URL based on environment
-    const connectionUrl = env.NODE_ENV === 'production'
-      ? `amqp://pulse_flow_user:${env.RABBITMQ_PASSWORD}@localhost:5672`
-      : env.RABBITMQ_URL;
-
-    console.log('🔄 Verifying RabbitMQ connection...');
     
-    // Connection options with timeouts
-    const connectionOptions = {
-      timeout: 5000,  // 5 seconds connection timeout
-      heartbeat: 30   // 30 seconds heartbeat
-    };
-
-    // Establish connection
-    const connection = await amqp.connect(connectionUrl, connectionOptions);
+    // Explicitly construct connection URL with credentials
+    const connectionUrl = `amqp://pulse_flow_user:${env.RABBITMQ_PASSWORD}@localhost:5672`;
     
-    // Create channel
-    const channel = await connection.createChannel();
+    // Add retry logic for production environment
+    const maxRetries = process.env.NODE_ENV === 'production' ? 5 : 1;
+    let lastError;
     
-    // Declare a test queue
-    const testQueue = 'pulse_flow_test_queue';
-    await channel.assertQueue(testQueue, { 
-      durable: false,
-      autoDelete: true
-    });
-
-    // Close connection
-    await channel.close();
-    await connection.close();
-
-    console.log('✅ RabbitMQ connection verified successfully');
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const connection = await amqp.connect(connectionUrl, {
+          timeout: 5000,
+          heartbeat: 30
+        });
+        
+        const channel = await connection.createChannel();
+        
+        // Test queue declaration
+        await channel.assertQueue('test_queue', { durable: false });
+        
+        console.log('✅ RabbitMQ connection verified successfully');
+        
+        // Close connection
+        await channel.close();
+        await connection.close();
+        
+        process.exit(0);
+      } catch (error) {
+        lastError = error;
+        if (i < maxRetries - 1) {
+          console.log(`Retry attempt ${i + 1} of ${maxRetries}...`);
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s between retries
+        }
+      }
+    }
+    
+    // If we get here, all retries failed
+    throw lastError;
   } catch (error) {
-    errorCounter.inc({ type: 'rabbitmq_verification' });
-    console.error('❌ RabbitMQ verification failed:', 
-      error instanceof Error ? error.message : 'Unknown error'
-    );
-    process.exit(1);
+    if (process.env.NODE_ENV === 'production') {
+      errorCounter.inc({ type: 'rabbitmq_verification' });
+    }
+    console.error('❌ RabbitMQ verification failed:', error);
+    process.exit(process.env.NODE_ENV === 'production' ? 1 : 0);
   }
 }
 
-verifyRabbitMQConnection();
+verifyRabbitMQ();

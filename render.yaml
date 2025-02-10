@@ -20,7 +20,9 @@ services:
       - key: PORT
         value: 3000
       - key: RABBITMQ_URL
-        value: amqp://pulse_flow_user:${RABBITMQ_PASSWORD}@rabbitmq:5672
+        sync: false
+      - key: RABBITMQ_PASSWORD
+        sync: false
     healthCheckPath: /healthz
     healthCheckTimeout: 5
     autoDeploy: true
