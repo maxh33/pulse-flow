@@ -151,9 +151,20 @@ function createProtobufPayload(metricsData: string) {
   return WriteRequest.encode(payload).finish();
 }
 
-// Push metrics to Grafana Cloud
+// Add rate limiting
+let lastPushTime = 0;
+const MIN_PUSH_INTERVAL = 30000; // Minimum 30 seconds between pushes
+
 export async function pushMetrics() {
   try {
+    // Rate limiting check
+    const now = Date.now();
+    if (now - lastPushTime < MIN_PUSH_INTERVAL) {
+      console.log('Skipping metrics push due to rate limiting');
+      return;
+    }
+    lastPushTime = now;
+
     // Create Protobuf payload from metrics
     const metricsData = await registry.metrics();
     const protobufPayload = createProtobufPayload(metricsData);
@@ -161,8 +172,8 @@ export async function pushMetrics() {
     // Compress the metrics data
     const compressedPayload = await snappy.compress(Buffer.from(protobufPayload));
 
-    // Push to Grafana Cloud with comprehensive error handling
-    await axios.post(metrics.pushUrl!, compressedPayload, {
+    // Push to Grafana Cloud with retry logic
+    const response = await axios.post(metrics.pushUrl!, compressedPayload, {
       auth: {
         username: process.env.GRAFANA_USERNAME!,
         password: process.env.GRAFANA_API_KEY!
@@ -173,26 +184,32 @@ export async function pushMetrics() {
         'X-Prometheus-Remote-Write-Version': '0.1.0',
         'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`
       },
-      validateStatus: (status) => status === 200 || status === 204
+      // Add retry-after handling
+      validateStatus: (status) => {
+        if (status === 429) {
+          const retryAfter = parseInt(response?.headers?.['retry-after'] || '60');
+          lastPushTime = now + (retryAfter * 1000);
+          return false;
+        }
+        return status === 200 || status === 204;
+      }
     });
 
     console.log('Metrics pushed successfully');
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Metrics push failed:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message
-      });
+    if (axios.isAxiosError(error) && error.response?.status === 429) {
+      const retryAfter = parseInt(error.response.headers['retry-after'] || '60');
+      console.log(`Rate limited. Will retry after ${retryAfter} seconds`);
+      lastPushTime = Date.now() + (retryAfter * 1000);
     } else {
-      console.error('Unexpected metrics push error:', error);
+      console.error('Metrics push failed:', {
+        status: axios.isAxiosError(error) ? error.response?.status : 'N/A',
+        data: axios.isAxiosError(error) ? error.response?.data : null,
+        message: error instanceof Error ? error.message : String(error)
+      });
     }
     
-    // Optionally increment an error metric
     errorCounter.inc({ type: 'metrics_push_failure' });
-    
-    // Re-throw to allow caller to handle
-    throw error;
   }
 }
 

@@ -69,7 +69,7 @@ export const metricsConfig = {
     environment: process.env.NODE_ENV || 'development',
     instance: process.env.HOSTNAME || 'unknown'
   },
-  pushInterval: parseInt(process.env.METRICS_PUSH_INTERVAL || '15000'),
+  pushInterval: parseInt(process.env.METRICS_PUSH_INTERVAL || '60000'),
   compression: {
     enabled: true,
     algorithm: 'snappy'
@@ -77,8 +77,8 @@ export const metricsConfig = {
   retryConfig: {
     retries: 3,
     backoff: {
-      initial: 1000,
-      max: 10000,
+      initial: 5000,
+      max: 30000,
       factor: 2
     }
   }
