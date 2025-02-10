@@ -46,11 +46,10 @@ jobs:
           echo "RABBITMQ_URL=amqp://pulse_flow_user:${{ secrets.RABBITMQ_PASSWORD }}@localhost:5672" >> $GITHUB_ENV
 
       - name: Verify RabbitMQ Connection
-        env:
-          RABBITMQ_URL: ${{ env.RABBITMQ_URL }}
-          RABBITMQ_PASSWORD: ${{ env.RABBITMQ_PASSWORD }}
-          NODE_ENV: production
         run: npm run verify:rabbitmq
+        env:
+          RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
+          NODE_ENV: production
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -107,6 +106,7 @@ jobs:
           GRAFANA_PROMETHEUS_URL: ${{ secrets.GRAFANA_PROMETHEUS_URL }}
           GRAFANA_USERNAME: ${{ secrets.GRAFANA_USERNAME }}
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+          RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Wait for app to start
@@ -148,19 +148,3 @@ jobs:
         run: |
           docker-compose -f docker-compose.prod.yml down --volumes --remove-orphans || true
           docker network rm pulse-flow_app_network || true
-
-      # RabbitMQ service container
-    services:
-        rabbitmq:
-          image: rabbitmq:3-management
-          ports:
-            - 5673:5672
-            - 15673:15672
-          env:
-            RABBITMQ_DEFAULT_USER: pulse_flow_user
-            RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_PASSWORD }}
-          options: >-
-            --health-cmd "rabbitmqctl node_health_check"
-            --health-interval 10s
-            --health-timeout 5s
-            --health-retries 5

@@ -43,6 +43,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - MONGODB_URI=${MONGODB_URI}
+      - RABBITMQ_URL=${RABBITMQ_URL}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
       interval: 30s
@@ -94,28 +95,6 @@ services:
       timeout: 10s
       retries: 3
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: pulse-flow-rabbitmq
-    networks:
-      - app_network
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      - RABBITMQ_DEFAULT_USER=pulse_flow_user
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmqctl", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
-
 volumes:
   prometheus_data:
   mongodb_data:
-  rabbitmq_data:
