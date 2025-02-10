@@ -15,12 +15,13 @@ export const createRabbitMQConnection = async () => {
     
     // Declare queues with enhanced configuration
     await channel.assertQueue('tweet_processing', { 
-      durable: true,  // Survive broker restart
+      durable: true,
       autoDelete: false,
       arguments: {
         'x-queue-type': 'classic',
-        'x-max-length': 10000,  // Limit queue size
-        'x-overflow': 'reject-publish'  // Prevent queue from growing indefinitely
+        'x-max-length': rabbitMQConfig.limits.maxQueueLength,
+        'x-max-age': '21d',  // Remove messages after 21 days
+        'x-overflow': 'reject-publish'
       }
     });
 
@@ -35,6 +36,12 @@ export const createRabbitMQConnection = async () => {
 export const rabbitMQConfig = {
   queues: {
     tweetProcessing: 'tweet_processing'
+  },
+  limits: {
+    maxQueueLength: 9000,  // Keep under 10,000 limit
+    maxQueues: 90,         // Keep under 100 limit
+    maxConnections: 15,    // Keep under 20 limit
+    cleanupInterval: 14 * 24 * 60 * 60 * 1000, // 14 days (half of max idle time)
   },
   retryConfig: {
     maxRetries: 3,

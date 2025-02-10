@@ -23,10 +23,8 @@ async function verifyRabbitMQ() {
   try {
     const env = envSchema.parse(process.env);
     
-    // Use the full URL in production, construct local URL in development
-    const connectionUrl = process.env.NODE_ENV === 'production' 
-      ? env.RABBITMQ_URL
-      : `amqp://pulse_flow_user:${env.RABBITMQ_PASSWORD}@localhost:5672`;
+    // Always use the full URL from environment
+    const connectionUrl = env.RABBITMQ_URL;
     
     console.log('Attempting to connect to RabbitMQ at:', connectionUrl.replace(/:[^:]*@/, ':****@'));
     
@@ -41,17 +39,28 @@ async function verifyRabbitMQ() {
         });
         
         const channel = await connection.createChannel();
-        await channel.assertQueue('test_queue', { durable: false });
+        console.log('Channel created successfully');
         
-        console.log('✅ RabbitMQ connection verified successfully');
+        // Test queue declaration
+        const queueName = 'test_queue';
+        await channel.assertQueue(queueName, { 
+          durable: false,
+          autoDelete: true 
+        });
+        console.log('Test queue declared successfully');
+        
+        // Cleanup test queue
+        await channel.deleteQueue(queueName);
+        console.log('Test queue cleaned up');
         
         await channel.close();
         await connection.close();
         
+        console.log('✅ RabbitMQ connection verified successfully');
         process.exit(0);
       } catch (error) {
         lastError = error;
-        console.error(`Connection attempt ${i + 1} failed:`, (error as Error).message);
+        console.error(`Connection attempt ${i + 1} failed:`, error);
         
         if (i < maxRetries - 1) {
           console.log(`Retrying in 5 seconds... (${i + 1}/${maxRetries})`);
