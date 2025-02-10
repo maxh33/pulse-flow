@@ -1,10 +1,16 @@
 import amqp from 'amqplib';
 
 export const createRabbitMQConnection = async () => {
-  const rabbitMQUrl = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
-  
+  if (!process.env.RABBITMQ_URL) {
+    throw new Error('RABBITMQ_URL environment variable is not set');
+  }
+
   try {
-    const connection = await amqp.connect(rabbitMQUrl);
+    const connection = await amqp.connect(process.env.RABBITMQ_URL, {
+      heartbeat: 60,
+      timeout: 10000
+    });
+    
     const channel = await connection.createChannel();
     
     // Declare queues with enhanced configuration
@@ -18,6 +24,7 @@ export const createRabbitMQConnection = async () => {
       }
     });
 
+    console.log('Successfully connected to RabbitMQ');
     return { connection, channel };
   } catch (error) {
     console.error('RabbitMQ connection error:', error);

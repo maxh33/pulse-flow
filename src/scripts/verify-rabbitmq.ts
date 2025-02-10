@@ -12,8 +12,8 @@ import { errorCounter } from '../monitoring/metrics';
 
 // Environment validation schema
 const envSchema = z.object({
-  RABBITMQ_URL: z.string().url('Invalid RabbitMQ URL'),
-  RABBITMQ_PASSWORD: z.string().min(1, 'RabbitMQ password is required'),
+  RABBITMQ_URL: z.string(),
+  RABBITMQ_PASSWORD: z.string(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development')
 });
 
@@ -23,42 +23,43 @@ async function verifyRabbitMQ() {
   try {
     const env = envSchema.parse(process.env);
     
-    // Explicitly construct connection URL with credentials
-    const connectionUrl = `amqp://pulse_flow_user:${env.RABBITMQ_PASSWORD}@localhost:5672`;
+    // Use the full URL in production, construct local URL in development
+    const connectionUrl = process.env.NODE_ENV === 'production' 
+      ? env.RABBITMQ_URL
+      : `amqp://pulse_flow_user:${env.RABBITMQ_PASSWORD}@localhost:5672`;
     
-    // Add retry logic for production environment
+    console.log('Attempting to connect to RabbitMQ at:', connectionUrl.replace(/:[^:]*@/, ':****@'));
+    
     const maxRetries = process.env.NODE_ENV === 'production' ? 5 : 1;
     let lastError;
     
     for (let i = 0; i < maxRetries; i++) {
       try {
         const connection = await amqp.connect(connectionUrl, {
-          timeout: 5000,
-          heartbeat: 30
+          timeout: 10000,
+          heartbeat: 60
         });
         
         const channel = await connection.createChannel();
-        
-        // Test queue declaration
         await channel.assertQueue('test_queue', { durable: false });
         
         console.log('✅ RabbitMQ connection verified successfully');
         
-        // Close connection
         await channel.close();
         await connection.close();
         
         process.exit(0);
       } catch (error) {
         lastError = error;
+        console.error(`Connection attempt ${i + 1} failed:`, (error as Error).message);
+        
         if (i < maxRetries - 1) {
-          console.log(`Retry attempt ${i + 1} of ${maxRetries}...`);
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s between retries
+          console.log(`Retrying in 5 seconds... (${i + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
       }
     }
     
-    // If we get here, all retries failed
     throw lastError;
   } catch (error) {
     if (process.env.NODE_ENV === 'production') {
