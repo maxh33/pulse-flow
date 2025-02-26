@@ -4,6 +4,40 @@ networks:
     driver: bridge
 
 services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb-dev
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_dev_data:/data/db
+    networks:
+      - dev_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-dev
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - dev_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
   app:
     build:
       context: .
@@ -16,7 +50,8 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_URI=mongodb://mongodb:27017/pulse_flow
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
     ports:
       - "3000:3000"  # Port for easier debugging
     command: >
@@ -31,7 +66,11 @@ services:
       retries: 5
       start_period: 120s  # Increased to give more time for development startup
     restart: unless-stopped
-
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   continuous-insert:
     build:
@@ -136,3 +175,4 @@ volumes:
   prometheus_data:
   grafana_data:
   jenkins_home_dev:
+  mongodb_dev_data:

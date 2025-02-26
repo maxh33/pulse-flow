@@ -69,3 +69,5 @@ docs/drafts/
 # Jest
 jest-*-report.json
 
+# Prompts
+prompts/
