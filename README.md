@@ -10,6 +10,8 @@ PulseFlow is a backend platform designed for real-time data processing and visua
 - Platform usage analytics
 - Engagement metrics monitoring
 - Performance and health monitoring
+- Robust error handling and metrics tracking
+- Secure integration with cloud services
 
 ## Tech Stack
 
@@ -17,6 +19,9 @@ PulseFlow is a backend platform designed for real-time data processing and visua
 - **Backend**: Node.js + Express with TypeScript
 - **Database**: MongoDB with Mongoose ODM
 - **Containerization**: Docker & Docker Compose
+- **Message Queue**: RabbitMQ with CloudAMQP
+- **Testing**: Jest with comprehensive test coverage
+- **Code Quality**: ESLint, Prettier, and automated pre-commit hooks
 
 ## Architecture Components
 - Microservices-based Design: Modular architecture for scalability and maintainability.
@@ -34,37 +39,53 @@ PulseFlow is a backend platform designed for real-time data processing and visua
 - **Continuous Integration**: GitHub Actions
 - **Container Registry**: GitHub Container Registry
 - **Container Orchestration**: Docker Compose
+- **Pre-commit Hooks**: Automated code quality and testing checks
+
+## Testing Strategy
+The project implements a comprehensive testing approach:
+- **Unit Tests**: For individual components and functions
+- **Integration Tests**: Validates interactions between components
+- **Automated Testing**: Integrated with CI/CD and pre-commit hooks
+- **Mocking**: Sophisticated mocking for external dependencies
+
+## Security Improvements
+See [SECURITY.md](SECURITY.md) file for details on:
+- Recent security updates addressing CVE-2023-45853
+- Container security hardening
+- Recommended security practices
+- Code quality enhancements
 
 ## Monitoring Setup
-
-
-- **Metrics**: Prometheus
-- **Dashboards**: Grafana
+- **Metrics**: Prometheus with custom metrics collection
+- **Dashboards**: Grafana with real-time data visualization
 - **Health Checks**: Custom endpoints with prometheus-client
-- **MongoDB Charts**: 
+- **MongoDB Charts**: For data-specific visualizations
 
 The application exports metrics in Prometheus format and pushes them to Grafana Cloud. A local monitoring stack is also available through Docker Compose.
 
 # Dashboards
 
-
 ## Project Demo Video
-
-
 [![Video Thumbnail](https://img.youtube.com/vi/O9DCa3mVKJs/0.jpg)](https://www.youtube.com/watch?v=O9DCa3mVKJs)
 
 **[Watch the Demo Video](https://www.youtube.com/watch?v=O9DCa3mVKJs)**
 
 ### Grafana Performance Dashboard
+![Grafana Dashboard](public/grafana.png)
 ![Grafana Dashboard](public/GrafanaEx.png)
 
 **[>> **SOON** ~~View LIVE Grafana Dashboard HERE~~ <<](https://maxh33.grafana.net/public-dashboards/2f5dd656ee264fd2ac6f13f1aa1b4004)**
+
+### MongoDB Atlas Dashboard
+![MongoDB Atlas Dashboard](public/atlas.png)
 
 ## MongoDB Charts Dashboard
 ![MongoDB Charts Dashboard](public/MainMetrics.png)
 
 **[>> **SOON** ~~View LIVE MongoDB Charts Dashboard HERE~~ <<](https://charts.mongodb.com/charts-project-0-tmkdyjw/public/dashboards/6798e048-db1e-4c24-85a6-e942bec5d15f)**
 
+### RabbitMQ Cloud Management
+![RabbitMQ Dashboard](public/rabbit.png)
 
 ## Data Generation Methodology
 

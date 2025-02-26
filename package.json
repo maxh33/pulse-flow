@@ -7,7 +7,7 @@
     "start:prod": "node dist/index.js",
     "build": "tsc",
     "dev": "ts-node src/index.ts",
-    "test": "cross-env NODE_ENV=test jest",
+    "test": "cross-env NODE_ENV=test jest --testPathIgnorePatterns=\"dist/\"",
     "test:watch": "cross-env NODE_ENV=test jest --watch",
     "test:mongodb": "jest src/tests/mongodb.test.ts --forceExit",
     "docker:prod": "docker-compose -f docker-compose.prod.yml up -d",
