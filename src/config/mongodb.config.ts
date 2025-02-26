@@ -1,39 +1,28 @@
-import mongoose from 'mongoose';
-import { errorCounter } from '../monitoring/metrics';
+import mongoose from "mongoose";
+import { errorCounter } from "../monitoring/metrics";
 
 export const connectDB = async () => {
   try {
     const uri = process.env.MONGODB_URI;
+
     if (!uri) {
-      throw new Error('MongoDB URI is not defined');
+      console.warn("MongoDB URI is not defined, using default local URI");
+      // Fallback to a default local URI if not specified
+      process.env.MONGODB_URI = "mongodb://localhost:27017/pulse_flow";
     }
 
-    await mongoose.connect(uri, {
+    await mongoose.connect(process.env.MONGODB_URI!, {
+      // Add some recommended connection options
       serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 10000,
-      waitQueueTimeoutMS: 10000,
-      maxPoolSize: 10,
-      minPoolSize: 2,
       retryWrites: true,
-      w: 'majority'
+      w: "majority",
     });
 
-    // Add connection monitoring
-    mongoose.connection.on('error', (err) => {
-      console.error('MongoDB Connection Error:', err);
-      errorCounter.inc({ type: 'mongodb_connection' });
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      console.warn('MongoDB Disconnected');
-      errorCounter.inc({ type: 'mongodb_disconnect' });
-    });
-
+    console.log("MongoDB Connected successfully");
     return mongoose.connection;
   } catch (error) {
-    console.error('MongoDB connection error:', error);
-    errorCounter.inc({ type: 'mongodb_initial_connection' });
-    throw error; // Don't exit process, let caller handle it
+    console.error("MongoDB connection error:", error);
+    errorCounter.inc({ type: "mongodb_initial_connection" });
+    throw error;
   }
 };

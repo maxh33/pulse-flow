@@ -1,12 +1,14 @@
 # Dependencies
 node_modules/
 dist/
+build/
 
 # Environment
 .env
 .env.local
 .env.development
 .env.production
+.env.test
 *.env.secret
 
 # Logs
@@ -16,6 +18,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Testing
+coverage/
+.nyc_output/
+test-results/
+*.test.report.xml
+
 # IDE
 .idea/
 .vscode/
@@ -23,12 +31,7 @@ yarn-error.log*
 *.swp
 *.swo
 
-# Testing
-coverage/
-.nyc_output/
-test-results/
-
-# Docker volumes
+# Docker
 docker/**/data
 docker/**/*
 !docker/**/config
@@ -41,7 +44,6 @@ Thumbs.db
 desktop.ini
 
 # Build artifacts
-build/
 *.tsbuildinfo
 
 # Temporary files
@@ -53,8 +55,7 @@ temp/
 *.debug
 debug.log
 
-# Documentation drafts
-docs/
+# Documentation
 docs/drafts/
 *.draft.md
 
@@ -62,9 +63,9 @@ docs/drafts/
 *.metrics
 *.prom
 
-# TypeScript cache
-*.tsbuildinfo
-
 # Render deployment
 .render/
+
+# Jest
+jest-*-report.json
 

@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-slim AS builder
+FROM node:20-bullseye-slim AS builder
 
 WORKDIR /usr/src/app
 
@@ -16,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:18-slim AS production
+FROM node:20-bullseye-slim AS production
 
 WORKDIR /usr/src/app
 
@@ -46,7 +46,7 @@ EXPOSE 3000
 CMD ["npm", "run", "start"]
 
 # Development stage
-FROM node:18-slim AS development
+FROM node:20-bullseye-slim AS development
 
 WORKDIR /usr/src/app
 

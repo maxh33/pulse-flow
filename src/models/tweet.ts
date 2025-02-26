@@ -1,29 +1,10 @@
-import mongoose from 'mongoose';
-import { Document, ObjectId } from 'mongodb';
+import mongoose, { Schema, Document } from "mongoose";
+import { TweetData } from "../types/tweet";
 
-export interface TweetData {
-  tweetId: string;
-  user: string;
-  content: string;
-  timestamp: Date;
-  metrics: {
-    retweets: number;
-    likes: number;
-    comments: number;
-    total: number;
-    engagement_rate: number;
-  };
-  sentiment: 'positive' | 'neutral' | 'negative';
-  location: {
-    country: string;
-    city: string;
-  };
-  platform: 'web' | 'android' | 'ios';
-  tags: string[];
-}
+export interface TweetDocument extends TweetData, Document {}
 
-const tweetSchema = new mongoose.Schema<TweetData>({
-  tweetId: { type: String, required: true, unique: true },
+const TweetSchema: Schema = new Schema<TweetDocument>({
+  tweetId: { type: String, required: true },
   user: { type: String, required: true },
   content: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
@@ -32,54 +13,27 @@ const tweetSchema = new mongoose.Schema<TweetData>({
     likes: { type: Number, required: true },
     comments: { type: Number, required: true },
     total: { type: Number, required: true },
-    engagement_rate: { type: Number, required: true }
-  }
+    engagement_rate: { type: Number, required: true },
+  },
+  sentiment: {
+    type: String,
+    enum: ["positive", "neutral", "negative"],
+    required: true,
+  },
+  location: {
+    country: { type: String, required: true },
+    city: { type: String, required: true },
+  },
+  platform: {
+    type: String,
+    enum: ["web", "android", "ios"],
+    required: true,
+  },
+  tags: { type: [String], default: [] },
 });
 
-export const TweetModel = mongoose.model<TweetData>('Tweet', tweetSchema);
+// Use mongoose.models to prevent model overwrite
+export const TweetModel =
+  mongoose.models.Tweet || mongoose.model<TweetDocument>("Tweet", TweetSchema);
 
-export interface TweetDocument extends Document {
-
-tweetId: string;
-
-user: string;
-
-content: string;
-
-timestamp: Date;
-
-metrics: {
-
-  retweets: number;
-
-  likes: number;
-
-  comments: number;
-
-};
-
-sentiment: string;
-
-location: {
-
-  country: string;
-
-  city: string;
-
-};
-
-platform: string;
-
-tags: string[];
-
-_id: ObjectId;
-
-__v: number;
-
-$assertPopulated: () => void;
-
-$clearModifiedPaths: () => void;
-
-$createModifiedPathsSnapshot: () => void;
-
-}
+export { TweetData };

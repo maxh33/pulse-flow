@@ -48,7 +48,12 @@ The application exports metrics in Prometheus format and pushes them to Grafana 
 # Dashboards
 
 
-**![>> **SOON** ~~Project Demo Gif~~ <<](public/demo.gif)**
+## Project Demo Video
+
+
+[![Video Thumbnail](https://img.youtube.com/vi/O9DCa3mVKJs/0.jpg)](https://www.youtube.com/watch?v=O9DCa3mVKJs)
+
+**[Watch the Demo Video](https://www.youtube.com/watch?v=O9DCa3mVKJs)**
 
 ### Grafana Performance Dashboard
 ![Grafana Dashboard](public/GrafanaEx.png)
