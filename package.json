@@ -51,7 +51,7 @@
     "@types/node": "^22.10.10",
     "@types/snappy": "^6.0.0",
     "amqplib": "^0.10.5",
-    "axios": "^1.6.2",
+    "axios": "^1.8.1",
     "chance": "^1.1.11",
     "cors": "^2.8.5",
     "express": "^4.21.2",
